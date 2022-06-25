@@ -1,3 +1,10 @@
+# custom
+wandb/
+tmptodel/
+script/
+saved_models/
+.vscode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
