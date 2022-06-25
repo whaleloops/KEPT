@@ -28,7 +28,7 @@ Modify wandb logging by changing run_coder.py this line wandb.init(project="mimi
 
 ## Train and Eval
 
-Given binarized monolingual (poem and poem) training data, parallel evaluation (poem and its tranlation) data, you can train and eval the model using the following command:
+MIMIC-III 50 (2 A100 GPU):
 
 ```
 CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 --master_port 56666 run_coder.py \
