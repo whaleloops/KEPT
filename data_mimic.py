@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import torch
 import os
 from torch.utils.data import Dataset
-from constant import DATA_DIR, MIMIC_2_DIR, MIMIC_3_DIR
+from constant import DATA_DIR, MIMIC_2_DIR, MIMIC_3_DIR, ICD_50_RANK
 import sys
 import re
 import pandas as pd
@@ -187,63 +187,14 @@ class MimicFullDataset(Dataset):
         # prep prompt
         if version == "mimic3-50": #TODO: remove unique sorted ICD_50_RANK for mimic3-50
             desc_list = []
-            ICD_50_RANK = [   ('401.9', (715.0, 778.0, 0.9190231362467867, 25.0)),
-                ('272.4', (485.0, 548.0, 0.885036496350365, 0.0)),
-                ('427.31', (436.0, 470.0, 0.9276595744680851, 1.0)),
-                ('414.01', (376.0, 435.0, 0.864367816091954, 0.0)),
-                ('428.0', (355.0, 422.0, 0.8412322274881516, 0.0)),
-                ('38.93', (224.0, 402.0, 0.5572139303482587, 0.0)),
-                ('584.9', (267.0, 362.0, 0.7375690607734806, 5.0)),
-                ('250.00', (290.0, 340.0, 0.8529411764705882, 0.0)),
-                ('530.81', (227.0, 266.0, 0.8533834586466166, 0.0)),
-                ('96.71', (183.0, 258.0, 0.7093023255813954, 0.0)),
-                ('518.81', (183.0, 255.0, 0.7176470588235294, 1.0)),
-                ('599.0', (200.0, 251.0, 0.796812749003984, 1.0)),
-                ('285.9', (54.0, 247.0, 0.21862348178137653, 13.0)),
-                ('96.04', (169.0, 233.0, 0.7253218884120172, 2.0)),
-                ('96.6', (189.0, 228.0, 0.8289473684210527, 0.0)),
-                ('39.61', (225.0, 226.0, 0.995575221238938, 0.0)),
-                ('403.90', (168.0, 215.0, 0.7813953488372093, 0.0)),
-                ('244.9', (198.0, 210.0, 0.9428571428571428, 1.0)),
-                ('285.1', (121.0, 203.0, 0.5960591133004927, 0.0)),
-                ('311', (145.0, 196.0, 0.7397959183673469, 0.0)),
-                ('276.2', (72.0, 195.0, 0.36923076923076925, 5.0)),
-                ('V15.82', (43.0, 187.0, 0.22994652406417113, 13.0)),
-                ('96.72', (136.0, 187.0, 0.7272727272727273, 0.0)),
-                ('V58.61', (150.0, 181.0, 0.8287292817679558, 0.0)),
-                ('305.1', (115.0, 181.0, 0.6353591160220995, 2.0)),
-                ('486', (125.0, 174.0, 0.7183908045977011, 1.0)),
-                ('585.9', (112.0, 172.0, 0.6511627906976745, 6.0)),
-                ('995.92', (114.0, 165.0, 0.6909090909090909, 1.0)),
-                ('496', (125.0, 160.0, 0.78125, 0.0)),
-                ('88.56', (136.0, 157.0, 0.8662420382165605, 0.0)),
-                ('272.0', (99.0, 155.0, 0.6387096774193548, 0.0)),
-                ('276.1', (73.0, 155.0, 0.47096774193548385, 0.0)),
-                ('038.9', (99.0, 149.0, 0.6644295302013423, 0.0)),
-                ('38.91', (38.0, 148.0, 0.25675675675675674, 0.0)),
-                ('287.5', (60.0, 138.0, 0.43478260869565216, 7.0)),
-                ('36.15', (134.0, 135.0, 0.9925925925925926, 0.0)),
-                ('33.24', (87.0, 127.0, 0.6850393700787402, 0.0)),
-                ('412', (90.0, 121.0, 0.743801652892562, 1.0)),
-                ('V45.81', (97.0, 108.0, 0.8981481481481481, 0.0)),
-                ('424.0', (59.0, 104.0, 0.5673076923076923, 0.0)),
-                ('507.0', (66.0, 102.0, 0.6470588235294118, 0.0)),
-                ('37.22', (70.0, 100.0, 0.7, 4.0)),
-                ('511.9', (39.0, 95.0, 0.4105263157894737, 27.0)),
-                ('410.71', (64.0, 91.0, 0.7032967032967034, 0.0)),
-                ('99.15', (64.0, 91.0, 0.7032967032967034, 0.0)),
-                ('45.13', (73.0, 87.0, 0.8390804597701149, 0.0)),
-                ('88.72', (26.0, 84.0, 0.30952380952380953, 7.0)),
-                ('39.95', (69.0, 72.0, 0.9583333333333334, 0.0)),
-                ('37.23', (30.0, 60.0, 0.5, 0.0)),
-                ('99.04', (28.0, 51.0, 0.5490196078431373, 0.0))]
-            assert len(ICD_50_RANK) == len(self.ind2c)
-            for icd9, info in ICD_50_RANK:
+            icd_50_rank = ICD_50_RANK
+            assert len(icd_50_rank) == len(self.ind2c)
+            for icd9, info in icd_50_rank:
                 desc_list.append(desc_dict[icd9].lower().split(",")[0])
         else:
             desc_list = []
-            ICD_50_RANK = [(v,0) for k,v in self.ind2c.items()]
-            for icd9, info in ICD_50_RANK:
+            icd_50_rank = [(v,0) for k,v in self.ind2c.items()]
+            for icd9, info in icd_50_rank:
                 desc_list.append(desc_dict[icd9].lower().split(",")[0])
         
         if term_count == 1:
@@ -252,7 +203,7 @@ class MimicFullDataset(Dataset):
             c_desc_list = []
             with open(f'./icd_mimic3_random_sort.json', 'r') as f: #TODO: change path
                 icd_syn = ujson.load(f)
-            for (code, info), tmp_desc in zip(ICD_50_RANK,desc_list):
+            for (code, info), tmp_desc in zip(icd_50_rank,desc_list):
                 tmp_desc = [tmp_desc]
                 new_terms = icd_syn.get(code, [])
                 if len(new_terms) >= term_count - 1:
@@ -270,6 +221,7 @@ class MimicFullDataset(Dataset):
 
         self.label_yes = self.tokenizer("yes")['input_ids'][1] # 10932
         self.label_no  = self.tokenizer("no")['input_ids'][1]  # 2362
+        self.mask_token_id  = tokenizer.mask_token_id
 
         # num_raw_token = []
         # num_pro_token = []
@@ -388,7 +340,7 @@ class DataCollatorForMimic:
 
         global_attention_mask = torch.zeros_like(batch["input_ids"])
         # global attention on cls token
-        global_attention_mask[:,0:self.global_attention_mask_size] = 1 # TODO change 408 to self.global_window
+        global_attention_mask[:,0:self.global_attention_mask_size] = 1 
         batch["global_attention_mask"] = global_attention_mask
 
         return batch

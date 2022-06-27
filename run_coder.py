@@ -277,6 +277,9 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
+    config.label_yes = train_dataset.label_yes
+    config.label_no = train_dataset.label_no
+    config.mask_token_id = train_dataset.mask_token_id
     model = LongformerForMaskedLM.from_pretrained(
         model_args.model_name_or_path,
         from_tf=bool(".ckpt" in model_args.model_name_or_path),

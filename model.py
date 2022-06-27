@@ -18,6 +18,9 @@ class LongformerForMaskedLM(LongformerPreTrainedModel):
 
         self.longformer = LongformerModel(config, add_pooling_layer=False)
         self.lm_head = LongformerLMHead(config)
+        self.label_yes_id = config.label_yes
+        self.label_no_id = config.label_no
+        self.mask_token_id = config.mask_token_id
 
         self.init_weights()
 
@@ -83,7 +86,7 @@ class LongformerForMaskedLM(LongformerPreTrainedModel):
             return_dict=return_dict,
         )
         # sequence_output = outputs[0]
-        sequence_output = outputs[0][input_ids == 50264] #TODO: replace
+        sequence_output = outputs[0][input_ids == self.mask_token_id]
         prediction_scores = self.lm_head(sequence_output)
 
         masked_lm_loss = None
@@ -91,8 +94,8 @@ class LongformerForMaskedLM(LongformerPreTrainedModel):
             loss_fct = CrossEntropyLoss()
             masked_lm_loss = loss_fct(prediction_scores.view(-1, self.config.vocab_size), labels.view(-1))
 
-        prediction_scores = prediction_scores[:,10932] - prediction_scores[:,2362]  #TODO: replace
-        prediction_scores = prediction_scores.view(input_ids.shape[0],-1) #TODO: replace
+        prediction_scores = prediction_scores[:,self.label_yes_id] - prediction_scores[:,self.label_no_id]
+        prediction_scores = prediction_scores.view(input_ids.shape[0],-1)
 
         if not return_dict:
             output = (prediction_scores,) + outputs[2:]
