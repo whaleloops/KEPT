@@ -4,7 +4,7 @@ import os
 # change DATA_DIR for yourself
 DATA_DIR = "/home/zhichaoyang/mimic3/ICD-MSMN/sample_data/"
 # DATA_DIR = "/home/zhichaoyang/mimic3/caml-mimic/mimicdata/"
-UMLS_PATH = "/home/zhichaoyang/mimic3/caml-mimic/mimicdata"
+# UMLS_PATH = "/home/zhichaoyang/mimic3/caml-mimic/mimicdata"
 # UMLS_PATH = "/data/data_user/umls/2021AA/META"
 MIMIC_2_DIR = os.path.join(DATA_DIR, "mimic2")
 MIMIC_3_DIR = os.path.join(DATA_DIR, "mimic3")

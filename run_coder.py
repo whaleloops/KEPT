@@ -345,13 +345,24 @@ def main():
         eval_datasets = [eval_dataset]
 
         for eval_dataset, task in zip(eval_datasets, tasks):
-            metrics = trainer.evaluate(eval_dataset=eval_dataset)
+            p = trainer.predict(dev_dataset, metric_key_prefix="dev")
+            preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
+            y = p.label_ids==10932
+            threshold = find_threshold_micro(preds, y)
 
+            p = trainer.predict(eval_dataset, metric_key_prefix="eval")
+            preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
+            y = p.label_ids==10932
+            # preds_new = modify_rule(y, preds, predict_dataset, train_dataset.ind2c, train_dataset.c2ind, tokenizer)
+            # result = all_metrics(y, preds_new, k=[5, 8, 15])
+            # preds = preds_new
+
+            metrics = all_metrics(y, preds, k=[5, 8, 15], threshold=threshold)
+            print(metrics)
             max_eval_samples = (
                 data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
             )
             metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
-
             trainer.log_metrics("eval", metrics)
             trainer.save_metrics("eval", metrics)
 
@@ -364,14 +375,6 @@ def main():
         label_list = train_dataset.ind2c
 
         for predict_dataset, task in zip(predict_datasets, tasks):
-            # Removing the `label` columns because it contains -1 and Trainer won't like that.
-            # aaa = y[np.newaxis,:,:].reshape((-1,4,50))
-            # predsa = preds[np.newaxis,:,:].reshape((-1,4,50))
-            # predsb=predsa.max(axis=1)
-            p = trainer.predict(dev_dataset, metric_key_prefix="dev")
-            preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
-            y = p.label_ids==10932
-            threshold = find_threshold_micro(preds, y)
 
             p = trainer.predict(predict_dataset, metric_key_prefix="predict")
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
@@ -380,11 +383,6 @@ def main():
             torch.save(y, "./tmptodel/y.pt")
             preds = torch.load("./tmptodel/preds.pt")
             y = torch.load("./tmptodel/y.pt")
-            result = all_metrics(y, preds, k=[5, 8, 15], threshold=threshold)
-            print(result)
-            # preds_new = modify_rule(y, preds, predict_dataset, train_dataset.ind2c, train_dataset.c2ind, tokenizer)
-            # result = all_metrics(y, preds_new, k=[5, 8, 15])
-            # preds = preds_new
 
             output_predict_file = os.path.join(training_args.output_dir, f"predict_results_{task}.txt")
             if trainer.is_world_process_zero():
