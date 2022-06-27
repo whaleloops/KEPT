@@ -9,7 +9,7 @@ This repository contains the implementation of our KEPT model on the auto icd co
 * [PyTorch](http://pytorch.org/) (currently tested on version 1.9.0+cu111)
 * [Transformers](https://github.com/huggingface/transformers) (currently tested on version 4.16.2)
 
-Full environment setting is lised [here](https://github.com/whaleloops/KEPT/conda-environment.yaml).
+Full environment setting is lised [here](conda-environment.yaml).
 
 ## Download / preprocess data
 One need to obtain licences to download MIMIC-III dataset. Once you obtain the MIMIC-III dataset, please follow [caml-mimic](https://github.com/jamesmullenbach/caml-mimic) to preprocess the dataset. You should obtain train_full.csv, test_full.csv, dev_full.csv, train_50.csv, test_50.csv, dev_50.csv after preprocessing.
@@ -51,5 +51,5 @@ Please cite the following if you find this repo useful.
 
 ## License
 
-See the [LICENSE](LICENSE.md) file for more details.
+See the [LICENSE](LICENSE) file for more details.
 
