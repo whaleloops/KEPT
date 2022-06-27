@@ -1,6 +1,6 @@
 # KEPT
 
-This repository contains the original implementation of the auto icd coding project presented in xxx.
+This repository contains the implementation of our KEPT model on the auto icd coding task presented in xxx.
 
 ## Dependencies
 
@@ -9,9 +9,10 @@ This repository contains the original implementation of the auto icd coding proj
 * [PyTorch](http://pytorch.org/) (currently tested on version 1.9.0+cu111)
 * [Transformers](https://github.com/huggingface/transformers) (currently tested on version 4.16.2)
 
-Full dependency is lised here: TODO
+Full environment setting is lised [here](https://github.com/whaleloops/KEPT/conda-environment.yaml).
 
 ## Download / preprocess data
+One need to obtain licences to download MIMIC-III dataset. Once you obtain the MIMIC-III dataset, please follow [caml-mimic](https://github.com/jamesmullenbach/caml-mimic) to preprocess the dataset. You should obtain train_full.csv, test_full.csv, dev_full.csv, train_50.csv, test_50.csv, dev_50.csv after preprocessing.
 Quickroutes are provided to save time, you could download processed data 
 (
 [GDrive](https://drive.google.com/file/d/1QCc2BACIgv4d5Q5jDMxM5iSC4hOIv-fU/view?usp=sharing)
@@ -21,7 +22,7 @@ and unzip in this folder.
 TODO: change to script
 
 ## Modify constant
-Modify constant.py : TODO
+Modify constant.py : change DATA_DIR to where your preprocessed data located.
 
 Modify wandb logging by changing run_coder.py this line wandb.init(project="mimic_coder", entity="whaleloops")
 
