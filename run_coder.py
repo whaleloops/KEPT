@@ -20,7 +20,7 @@ import os
 import torch
 from torch import nn
 from torch.nn.parallel import DistributedDataParallel
-from data_mimic import MimicFullDataset, my_collate_fn, my_collate_fn_led, DataCollatorForMimic, modify_rule
+from data_mimic import MimicFullDataset, my_collate_fn, my_collate_fn_led, modify_rule
 from tqdm import tqdm
 import json
 import sys
@@ -58,32 +58,8 @@ from transformers.trainer_utils import get_last_checkpoint, is_main_process
 
 from model import LongformerForMaskedLM
 
-torch.autograd.set_detect_anomaly(True)
 import wandb
 logger = logging.getLogger(__name__)
-
-
-def deactivate_relevant_gradients(model, trainable_components, verbose=True):
-    for param in model.parameters():
-        param.requires_grad = False
-
-    for name, param in model.named_parameters():
-        for component in trainable_components:
-            if component in name:
-                param.requires_grad = True
-                break
-    
-    if verbose:
-        print('\n\nTrainable Components:\n----------------------------------------\n')
-        total_trainable_params = 0 #sum(p.numel() for p in model.parameters() if p.requires_grad)
-        for name, param in model.named_parameters():
-            if param.requires_grad:
-                print(name, '  --->  ', param.shape)
-                total_trainable_params += param.shape[0] if len(param.shape) == 1 else param.shape[0] * param.shape[
-                    1]
-        print(f'\n----------------------------------------\nNumber of Trainable Parameters: {total_trainable_params}\n')
-    
-    return model
 
 def find_threshold_micro(dev_yhat_raw, dev_y):
     dev_yhat_raw_1 = dev_yhat_raw.reshape(-1)
@@ -195,10 +171,6 @@ class ModelArguments:
             "with private models)."
         },
     )
-    finetune_terms: str = field(
-        default="no",
-        metadata={"help": "what terms to train like bitfit (bias)."},
-    )
 
 def main(): 
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
@@ -285,11 +257,8 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    if model_args.finetune_terms != 'no':
-        trainable_components = model_args.finetune_terms.split(";")
-        model = deactivate_relevant_gradients(model, trainable_components, verbose=True)
     if config.model_type == "longformer": 
-        data_collator = DataCollatorForMimic(global_attention_mask_size=train_dataset.global_window)
+        data_collator = my_collate_fn
     elif config.model_type == "led":
         data_collator = my_collate_fn_led
         model.use_cache=False
@@ -302,6 +271,13 @@ def main():
     def compute_metrics(p: EvalPrediction):
         preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
         y = p.label_ids==10932
+        
+        aaa = y[np.newaxis,:,:].reshape((-1,4,50))
+        predsa = preds[np.newaxis,:,:].reshape((-1,4,50))
+        predsb=predsa.max(axis=1)
+        y = aaa[:,0,:]
+        preds = predsb
+
         result = all_metrics(y, preds, k=[5, 8, 15])
         return result
 
@@ -345,24 +321,13 @@ def main():
         eval_datasets = [eval_dataset]
 
         for eval_dataset, task in zip(eval_datasets, tasks):
-            p = trainer.predict(dev_dataset, metric_key_prefix="dev")
-            preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
-            y = p.label_ids==10932
-            threshold = find_threshold_micro(preds, y)
+            metrics = trainer.evaluate(eval_dataset=eval_dataset)
 
-            p = trainer.predict(eval_dataset, metric_key_prefix="eval")
-            preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
-            y = p.label_ids==10932
-            # preds_new = modify_rule(y, preds, predict_dataset, train_dataset.ind2c, train_dataset.c2ind, tokenizer)
-            # result = all_metrics(y, preds_new, k=[5, 8, 15])
-            # preds = preds_new
-
-            metrics = all_metrics(y, preds, k=[5, 8, 15], threshold=threshold)
-            print(metrics)
             max_eval_samples = (
                 data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
             )
             metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
+
             trainer.log_metrics("eval", metrics)
             trainer.save_metrics("eval", metrics)
 
@@ -375,6 +340,19 @@ def main():
         label_list = train_dataset.ind2c
 
         for predict_dataset, task in zip(predict_datasets, tasks):
+            # Removing the `label` columns because it contains -1 and Trainer won't like that.
+            p = trainer.predict(dev_dataset, metric_key_prefix="dev")
+            preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
+
+            aaa = y[np.newaxis,:,:].reshape((-1,4,50))
+            predsa = preds[np.newaxis,:,:].reshape((-1,4,50))
+            predsb=predsa.max(axis=1)
+            y = aaa[:,0,:]
+            preds = predsb
+            y = p.label_ids==10932
+            threshold = find_threshold_micro(preds, y)
+
+
 
             p = trainer.predict(predict_dataset, metric_key_prefix="predict")
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
@@ -384,52 +362,39 @@ def main():
             preds = torch.load("./tmptodel/preds.pt")
             y = torch.load("./tmptodel/y.pt")
 
-            output_predict_file = os.path.join(training_args.output_dir, f"predict_results_{task}.txt")
-            if trainer.is_world_process_zero():
-                # uniids_toinclude = [a[0] for a in ICD_50_RANK]
-                uniids_toinclude = ["285.9", "276.2", "584.9", "511.9", "38.93", "285.1", "276.1", "276.2", "287.5", "V15.82", "38.91", "88.72", "37.23"]
-                to_save_succ = [[] for i in range(len(uniids_toinclude))]
-                to_save_fail = [[] for i in range(len(uniids_toinclude))]
-                to_save_eror = [[] for i in range(len(uniids_toinclude))]
+            aaa = y[np.newaxis,:,:].reshape((-1,4,50))
+            predsa = preds[np.newaxis,:,:].reshape((-1,4,50))
+            predsb=predsa.max(axis=1)
+            y = aaa[:,0,:]
+            preds = predsb
 
-                index = 0
+            result = all_metrics(y, preds, k=[5, 8, 15], threshold=threshold)
+            preds_new = modify_rule(y, preds, predict_dataset, train_dataset.ind2c, train_dataset.c2ind, tokenizer)
+            result = all_metrics(y, preds_new, k=[5, 8, 15], threshold=threshold)
+            preds = preds_new
+
+            output_predict_file = os.path.join(training_args.output_dir, f"predict_results_{task}_cheat.txt")
+            if trainer.is_world_process_zero():
                 with open(output_predict_file, "w") as writer:
+                    logger.info(f"***** Predict results {task} *****")
                     writer.write("index\ttrue1\ttrue2\tprediction\n")
-                    for proc, item, testa in zip(y, preds, predict_dataset.df):
-                        set_to_write_row2 = []
-                        for indexx, label in enumerate(proc):
+                    index = 0
+                    assert len(predict_dataset.df) == len(preds)
+                    for orig, proc, item in zip(predict_dataset.df, predict_dataset, preds):
+                        itwm_to_write_row1 = str(orig['LABELS'])
+                        tmp = itwm_to_write_row1.split(';')
+                        itwm_to_write_row2 = []
+                        for indexx, label in enumerate(proc['label_ids']):
                             if label > 0:
-                                set_to_write_row2 += [label_list[indexx]]
-                        itwm_to_write_row2 = ";".join(set_to_write_row2) 
-                        set_to_write_row3 = []
+                                itwm_to_write_row2 += [label_list[indexx]]
+                        itwm_to_write_row2 = ";".join(itwm_to_write_row2) 
+                        itwm_to_write_row3 = []
                         for indexx, prob in enumerate(item):
                             if prob > 0:
-                                set_to_write_row3 += [label_list[indexx]]
-                        itwm_to_write_row3 = ";".join(set_to_write_row3) 
-                        for indexx, label in enumerate(uniids_toinclude):
-                            if label in set_to_write_row2:
-                                if label in set_to_write_row3:
-                                    to_save_succ[indexx].append((label,testa["hadm_id"],testa["LABELS"],itwm_to_write_row2,itwm_to_write_row3,testa["TEXT"]))
-                                else:
-                                    to_save_fail[indexx].append((label,testa["hadm_id"],testa["LABELS"],itwm_to_write_row2,itwm_to_write_row3,testa["TEXT"]))
-                            if label in set_to_write_row3 and (not (label in set_to_write_row2)):
-                                to_save_eror[indexx].append((label,testa["hadm_id"],testa["LABELS"],itwm_to_write_row2,itwm_to_write_row3,testa["TEXT"]))
-                        tmp = testa["LABELS"]
-                        writer.write(f"{index}\t{tmp}\t{itwm_to_write_row2}\t{itwm_to_write_row3}\n")
+                                itwm_to_write_row3 += [label_list[indexx]]
+                        itwm_to_write_row3 = ";".join(itwm_to_write_row3)  
+                        writer.write(f"{index}\t{itwm_to_write_row1}\t{itwm_to_write_row2}\t{itwm_to_write_row3}\n")
                         index += 1
-                for a,b,c,d in zip(uniids_toinclude, to_save_succ, to_save_fail, to_save_eror):
-                    with open("predict_results_mimic3_succ_%s.txt"%(a), "w") as writer:
-                        for bb in b:
-                            writer.write(f"x-x-x-\n{bb[1]}\t{bb[2]}\t{bb[3]}\t{bb[4]}\n{bb[5]}\n")
-                    with open("predict_results_mimic3_fail_%s.txt"%(a), "w") as writer:
-                        for cc in c:
-                            writer.write(f"x-x-x-\n{cc[1]}\t{cc[2]}\t{cc[3]}\t{cc[4]}\n{cc[5]}\n")
-                    with open("predict_results_mimic3_eror_%s.txt"%(a), "w") as writer:
-                        for dd in d:
-                            writer.write(f"x-x-x-\n{dd[1]}\t{dd[2]}\t{dd[3]}\t{dd[4]}\n{dd[5]}\n")
-
-
-
         logger.info("*** Done for Predict ***")
 
 
