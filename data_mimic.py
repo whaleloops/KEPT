@@ -343,7 +343,7 @@ class DataCollatorForMimic:
         global_attention_mask = torch.zeros_like(batch["input_ids"][0])
         global_attention_mask[batch["input_ids"][0] == self.cls_token_id] = 1
         # global_attention_mask[:50] = 1
-        assert (batch["input_ids"][0] == self.cls_token_id).sum()==50
+        assert (batch["input_ids"][0] == self.cls_token_id).sum()==51
         batch["global_attention_mask"] = torch.stack([global_attention_mask]*batch["input_ids"].shape[0])
 
         return batch
