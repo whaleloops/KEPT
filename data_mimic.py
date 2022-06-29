@@ -214,7 +214,7 @@ class MimicFullDataset(Dataset):
                     tmp_desc = (tmp_desc * repeat_count)[0:term_count]
                 c_desc_list.append(tmp_desc)
 
-        descriptions = " " + " <mask>, ".join(desc_list) + " <mask>. "
+        descriptions = " " + " <mask>,<s> ".join(desc_list) + " <mask>.<s> "
         tmp = self.tokenizer.tokenize(descriptions)
         self.global_window = len(tmp) + 1
         assert self.global_window < 501 # only for gpu memory efficiency
@@ -310,6 +310,7 @@ class MimicFullDataset(Dataset):
 @dataclass
 class DataCollatorForMimic:
     global_attention_mask_size: int
+    cls_token_id: int
 
     def __call__(self, features: List[InputDataClass]) -> Dict[str, torch.Tensor]:
         first = features[0]
@@ -338,10 +339,12 @@ class DataCollatorForMimic:
                 else:
                     batch[k] = torch.tensor([f[k] for f in features])
 
-        global_attention_mask = torch.zeros_like(batch["input_ids"])
         # global attention on cls token
-        global_attention_mask[:,0:self.global_attention_mask_size] = 1 
-        batch["global_attention_mask"] = global_attention_mask
+        global_attention_mask = torch.zeros_like(batch["input_ids"][0])
+        global_attention_mask[batch["input_ids"][0] == self.cls_token_id] = 1
+        # global_attention_mask[:50] = 1
+        assert (batch["input_ids"][0] == self.cls_token_id).sum()==50
+        batch["global_attention_mask"] = torch.stack([global_attention_mask]*batch["input_ids"].shape[0])
 
         return batch
 

@@ -292,7 +292,7 @@ def main():
         trainable_components = model_args.finetune_terms.split(";")
         model = deactivate_relevant_gradients(model, trainable_components, verbose=True)
     if config.model_type == "longformer": 
-        data_collator = DataCollatorForMimic(global_attention_mask_size=train_dataset.global_window)
+        data_collator = DataCollatorForMimic(global_attention_mask_size=train_dataset.global_window, cls_token_id=tokenizer.cls_token_id)
     elif config.model_type == "led":
         data_collator = my_collate_fn_led
         model.use_cache=False

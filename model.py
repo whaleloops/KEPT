@@ -96,6 +96,7 @@ class LongformerForMaskedLM(LongformerPreTrainedModel):
 
         prediction_scores = prediction_scores[:,self.label_yes_id] - prediction_scores[:,self.label_no_id]
         prediction_scores = prediction_scores.view(input_ids.shape[0],-1)
+        
 
         if not return_dict:
             output = (prediction_scores,) + outputs[2:]
