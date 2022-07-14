@@ -25,7 +25,7 @@ from tqdm import tqdm
 import json
 import sys
 import numpy as np
-from evaluation import all_metrics
+from evaluation import all_metrics, stagfinal_eval
 # from train_parser import generate_parser, print_metrics
 # from train_utils import generate_output_folder_name, generate_model
 # from find_threshold import find_threshold_micro
@@ -62,6 +62,11 @@ torch.autograd.set_detect_anomaly(True)
 import wandb
 logger = logging.getLogger(__name__)
 
+def printresult(metrics):
+    print("------")
+    sort_orders  = sorted(metrics.items(), key=lambda x: x[0], reverse=True)
+    for k,v in sort_orders:
+        print(k+":"+str(v))
 
 def deactivate_relevant_gradients(model, trainable_components, verbose=True):
     for param in model.parameters():
@@ -352,6 +357,14 @@ def main():
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
             y = p.label_ids==10932
             threshold = find_threshold_micro(preds, y)
+            torch.save(preds, "./tmptodel/dev_preds.pt")
+            torch.save(y, "./tmptodel/dev_y.pt")
+            icd9s = []
+            for a in dev_dataset.df:
+                icd9s.append(a['ICD9s'])
+            torch.save(icd9s, "./tmptodel/dev_icd9s.pt")
+            predsa, ysa = stagfinal_eval(dev_dataset, preds, y, icd9s)
+            threshold = find_threshold_micro(predsa, ysa)
 
             p = trainer.predict(eval_dataset, metric_key_prefix="eval")
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
@@ -359,9 +372,16 @@ def main():
             # preds_new = modify_rule(y, preds, predict_dataset, train_dataset.ind2c, train_dataset.c2ind, tokenizer)
             # result = all_metrics(y, preds_new, k=[5, 8, 15])
             # preds = preds_new
+            torch.save(preds, "./tmptodel/test_preds.pt")
+            torch.save(y, "./tmptodel/test_y.pt")
+            icd9s = []
+            for a in eval_dataset.df:
+                icd9s.append(a['ICD9s'])
+            torch.save(icd9s, "./tmptodel/test_icd9s.pt")
+            predsa, ysa = stagfinal_eval(eval_dataset, preds, y, icd9s)
 
-            metrics = all_metrics(y, preds, k=[5, 8, 15], threshold=threshold)
-            print(metrics)
+            metrics = all_metrics(ysa, predsa, k=[5,8,15,50], threshold=threshold)
+            printresult(metrics)
             max_eval_samples = (
                 data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
             )
@@ -382,8 +402,6 @@ def main():
             p = trainer.predict(predict_dataset, metric_key_prefix="predict")
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
             y = p.label_ids==10932
-            torch.save(preds, "./tmptodel/preds.pt")
-            torch.save(y, "./tmptodel/y.pt")
             preds = torch.load("./tmptodel/preds.pt")
             y = torch.load("./tmptodel/y.pt")
 

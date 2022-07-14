@@ -12,6 +12,7 @@ import numpy as np
 import csv
 import ujson, json
 from collections import defaultdict
+import random
 
 InputDataClass = NewType("InputDataClass", Any)
 
@@ -169,6 +170,11 @@ class MimicFullDataset(Dataset):
         with open(self.path, "r") as f:
             self.df = ujson.load(f)
 
+        top50icd9s = []
+        with open(os.path.join(MIMIC_3_DIR, f"{version}_{mode}_predtop50.txt"), "r") as f:
+            top50icd9s = f.read().splitlines()  
+        assert len(top50icd9s) == len(self.df)
+
         self.ind2c, desc_dict = load_full_codes(self.train_path, version=version)
         # self.part_icd_codes = list(self.ind2c.values())
         self.c2ind = {c: ind for ind, c in self.ind2c.items()}
@@ -183,6 +189,7 @@ class MimicFullDataset(Dataset):
 
         self.len = len(self.df)
         self.truncate_length = truncate_length
+        self.global_window = 1
         
         # prep prompt
         if version == "mimic3-50": #TODO: remove unique sorted ICD_50_RANK for mimic3-50
@@ -197,27 +204,27 @@ class MimicFullDataset(Dataset):
             for icd9, info in icd_50_rank:
                 desc_list.append(desc_dict[icd9].lower().split(",")[0])
         
-        if term_count == 1:
-            c_desc_list = desc_list
-        else:
-            c_desc_list = []
-            with open(f'./icd_mimic3_random_sort.json', 'r') as f: #TODO: change path
-                icd_syn = ujson.load(f)
-            for (code, info), tmp_desc in zip(icd_50_rank,desc_list):
-                tmp_desc = [tmp_desc]
-                new_terms = icd_syn.get(code, [])
-                if len(new_terms) >= term_count - 1:
-                    tmp_desc.extend(new_terms[0:term_count - 1])
-                else:
-                    tmp_desc.extend(new_terms)
-                    repeat_count = int (term_count / len(tmp_desc)) + 1
-                    tmp_desc = (tmp_desc * repeat_count)[0:term_count]
-                c_desc_list.append(tmp_desc)
+        # if term_count == 1:
+        #     c_desc_list = desc_list
+        # else:
+        #     c_desc_list = []
+        #     with open(f'./icd_mimic3_random_sort.json', 'r') as f: #TODO: change path
+        #         icd_syn = ujson.load(f)
+        #     for (code, info), tmp_desc in zip(icd_50_rank,desc_list):
+        #         tmp_desc = [tmp_desc]
+        #         new_terms = icd_syn.get(code, [])
+        #         if len(new_terms) >= term_count - 1:
+        #             tmp_desc.extend(new_terms[0:term_count - 1])
+        #         else:
+        #             tmp_desc.extend(new_terms)
+        #             repeat_count = int (term_count / len(tmp_desc)) + 1
+        #             tmp_desc = (tmp_desc * repeat_count)[0:term_count]
+        #         c_desc_list.append(tmp_desc)
 
-        descriptions = " " + " <mask>, ".join(desc_list) + " <mask>. "
-        tmp = self.tokenizer.tokenize(descriptions)
-        self.global_window = len(tmp) + 1
-        assert self.global_window < 501 # only for gpu memory efficiency
+        # descriptions = " " + " <mask>, ".join(desc_list) + " <mask>. "
+        # tmp = self.tokenizer.tokenize(descriptions)
+        # self.global_window = len(tmp) + 1
+        # assert self.global_window < 501 # only for gpu memory efficiency
 
         self.label_yes = self.tokenizer("yes")['input_ids'][1] # 10932
         self.label_no  = self.tokenizer("no")['input_ids'][1]  # 2362
@@ -242,12 +249,75 @@ class MimicFullDataset(Dataset):
         # print(f'Max text length: {num_pro_token.max()}')
         # print(f'Min text length: {num_pro_token.min()}')
 
+        def get_codes_description_top50(codestop50, codesgold, desc_dict):
+            codes_new = str(codestop50).split(';')
+            codesgold = str(codesgold).split(';')
+            icd9s = []
+            labels = []
+            desc_list = [] 
+            for icd9 in codes_new:
+                tmp = desc_dict[icd9].lower().split(",")[0]
+                desc_list.append(" ".join(tmp.split()[:7]))
+                if icd9 in codesgold:
+                    labels.append(self.label_yes)
+                else:
+                    labels.append(self.label_no)
+                icd9s.append(icd9)
+            descriptions = " " + " <mask>, ".join(desc_list) + " <mask>. "
+            # 
+            tmp = self.tokenizer.tokenize(descriptions)
+            global_window = len(tmp) + 1
+            return descriptions, labels, global_window, icd9s
+
+        def get_codes_description_oracle(codes, desc_dict, icdset): #self.df[index]['LABELS']
+            codes_new = list(set(str(codes).split(';')))
+            icd9s = []
+            labels = []
+            #
+            desc_list = [] 
+            for icd9 in codes_new:
+                tmp = desc_dict[icd9].lower().split(",")[0]
+                desc_list.append(" ".join(tmp.split()[:7]))
+                labels.append(self.label_yes)
+                icd9s.append(icd9)
+            # assert len(desc_list) < 50
+            desc_list = desc_list[:50]
+            labels = labels[:50]
+            icd9s = icd9s[:50]
+            akey = np.random.choice(icdset, 100, replace=False)
+            counta = 0
+            for counta in range(len(akey)):
+                if not akey[counta] in codes_new:
+                    tmp = desc_dict[akey[counta]].lower().split(",")[0]
+                    desc_list.append(" ".join(tmp.split()[:7]))
+                    labels.append(self.label_no)
+                    icd9s.append(akey[counta])
+            assert len(desc_list) == len(labels)
+            desc_list = desc_list[:50]
+            labels = labels[:50]
+            icd9s = icd9s[:50]
+            #
+            idx = np.random.choice(np.arange(len(desc_list)), len(desc_list), replace=False)
+            desc_list = np.array(desc_list)
+            labels = np.array(labels)
+            icd9s = np.array(icd9s)
+            desc_list = desc_list[idx]
+            labels = labels[idx]
+            icd9s = icd9s[idx]
+            descriptions = " " + " <mask>, ".join(desc_list) + " <mask>. "
+            # 
+            tmp = self.tokenizer.tokenize(descriptions)
+            global_window = len(tmp) + 1
+            return descriptions, labels, global_window, icd9s
+
         num_pro_token = []
         to_sav = []
         countb = 0
         for index in range(self.len):
             text = self.df[index]['TEXT']
             text = re.sub(r'\[\*\*[^\]]*\*\*\]', '', text)  # remove any mimic special token like [**2120-2-28**] or [**Hospital1 3278**]
+            # descriptions, labels, global_window, icd9s = get_codes_description_oracle(self.df[index]['LABELS'], desc_dict, list(self.c2ind.keys()))
+            descriptions, labels, global_window, icd9s = get_codes_description_top50(top50icd9s[index], self.df[index]['LABELS'], desc_dict) 
             tmp = self.tokenizer.tokenize(descriptions + re.sub(r'  +', ' ', text.lower().replace("\n"," ")))
             if len(tmp) <= self.truncate_length:
                 num_pro_token.append(len(tmp))
@@ -263,6 +333,10 @@ class MimicFullDataset(Dataset):
                 #     to_sav.append((str(self.df[index]['LABELS']),text))
                 num_pro_token.append(len(tmp))
                 self.df[index]['TEXT'] = descriptions + re.sub(r'  +', ' ', text.lower().replace("\n"," "))
+            self.df[index]['LABELS'] = labels
+            self.df[index]['WINDOW'] = global_window
+            self.df[index]['ICD9s'] = icd9s
+            to_sav.append(global_window)
         num_pro_token = np.array(num_pro_token)
         print(f'Num of examples exceed max length {self.truncate_length}: {(num_pro_token > self.truncate_length).sum()} / {len(num_pro_token)}')
         print(f'Avg text length: {num_pro_token.mean()}')
@@ -275,7 +349,6 @@ class MimicFullDataset(Dataset):
         #     for a,b in to_sav:
         #         f.write(f"xxx\n{a}\n{b}\n")
 
-
     def __len__(self):
         return self.len
 
@@ -283,26 +356,23 @@ class MimicFullDataset(Dataset):
         input_word = self.tokenizer(text, padding='max_length', truncation='longest_first', max_length=self.truncate_length, 
             return_token_type_ids=True, return_attention_mask=True
             )
-        binary_label = [self.label_no] * self.code_count
-        for l in label:
-            if l in self.c2ind:
-                binary_label[self.c2ind[l]] = self.label_yes
                 
         # main_label = [0] * self.main_code_count
         # for l in label:
         #     if l.split('.')[0] in self.mc2ind:
         #         main_label[self.mc2ind[l.split('.')[0]]] = 1
         
-        input_word["label_ids"] = torch.tensor(binary_label, dtype=torch.long)
+        input_word["label_ids"] = torch.tensor(label, dtype=torch.long)
         return input_word
 
 
     def __getitem__(self, index):
         # proc label 
-        label = str(self.df[index]['LABELS']).split(';')
+        label = self.df[index]['LABELS']
         # proc input
         text = self.df[index]['TEXT']
         processed = self.process(text, label)
+        processed['WINDOW']  = self.df[index]['WINDOW']
         return processed
 
 
@@ -314,6 +384,9 @@ class DataCollatorForMimic:
     def __call__(self, features: List[InputDataClass]) -> Dict[str, torch.Tensor]:
         first = features[0]
         batch = {}
+        global_attention_mask_size = [f["WINDOW"] for f in features]
+        global_attention_mask_size = max(global_attention_mask_size)
+        global_attention_mask_size = min(global_attention_mask_size, 570)
 
         # Special handling for labels.
         # Ensure that tensor is created with the correct type
@@ -332,7 +405,7 @@ class DataCollatorForMimic:
         # Handling of all other possible keys.
         # Again, we will use the first element to figure out which key/values are not None for this model.
         for k, v in first.items():
-            if k not in ("label", "label_ids") and v is not None and not isinstance(v, str):
+            if k not in ("label", "label_ids", "WINDOW", "ICD9s") and v is not None and not isinstance(v, str):
                 if isinstance(v, torch.Tensor):
                     batch[k] = torch.stack([f[k] for f in features])
                 else:
@@ -340,7 +413,7 @@ class DataCollatorForMimic:
 
         global_attention_mask = torch.zeros_like(batch["input_ids"])
         # global attention on cls token
-        global_attention_mask[:,0:self.global_attention_mask_size] = 1 
+        global_attention_mask[:,0:global_attention_mask_size] = 1 
         batch["global_attention_mask"] = global_attention_mask
 
         return batch

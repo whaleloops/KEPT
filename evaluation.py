@@ -7,6 +7,32 @@ import sys
 from sklearn.metrics import roc_curve, auc
 from tqdm import tqdm
 from constant import MIMIC_2_DIR, MIMIC_3_DIR
+import ujson
+
+
+def stagfinal_eval(eval_dataset, preds, ys, icd9s):
+    error_cnt = 0
+    with open(eval_dataset.path, "r") as f:
+        df = ujson.load(f)
+    num_icds = eval_dataset.code_count
+    ysa = np.zeros((eval_dataset.len, num_icds), dtype=int)
+    predsa = np.zeros((eval_dataset.len, num_icds), dtype=float) - 25.0
+    for index in range(eval_dataset.len):
+        # c2y = defaultdict(lambda: 0)
+        c2p = defaultdict(lambda: -25.0)
+        for y, pred, icd9 in zip(ys[index], preds[index], icd9s[index]):
+            # c2y[icd9] = y
+            c2p[icd9] = pred
+        # text   = df[index]['TEXT']
+        labels = str(df[index]['LABELS']).split(';') 
+        for label in labels:
+            ysa[index,eval_dataset.c2ind[label]] = 1
+        for icd9 in icd9s[index]:
+            if icd9 in eval_dataset.c2ind:
+                predsa[index,eval_dataset.c2ind[icd9]] = c2p[icd9]
+            else:
+                error_cnt += 1
+    return predsa, ysa
 
 
 def all_metrics(y, yhat_raw, k=[5, 8, 15], calc_auc=True, threshold=0.0):
