@@ -22,6 +22,12 @@ import ujson, json
 from collections import defaultdict
 from evaluation import all_metrics, stagfinal_eval
 
+def printresult(metrics):
+    print("------")
+    sort_orders  = sorted(metrics.items(), key=lambda x: x[0], reverse=True)
+    for k,v in sort_orders:
+        print(k+":"+str(v))
+
 def find_threshold_micro(dev_yhat_raw, dev_y):
     dev_yhat_raw_1 = dev_yhat_raw.reshape(-1)
     dev_y_1 = dev_y.reshape(-1)
@@ -54,12 +60,18 @@ def calc_oravle2(eval_dataset):
 
 def main():
     threshold = 0
-    dev_preds = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/dev_preds.pt")
-    dev_ys = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/dev_y.pt")
-    dev_icd9s = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/dev_icd9s.pt")
-    test_preds = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/test_preds.pt")
-    test_ys = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/test_y.pt")
-    test_icd9s = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/test_icd9s.pt")
+    # dev_preds = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/dev_preds.pt")
+    # dev_ys = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/dev_y.pt")
+    # dev_icd9s = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/dev_icd9s.pt")
+    # test_preds = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/test_preds.pt")
+    # test_ys = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/test_y.pt")
+    # test_icd9s = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/oracle/test_icd9s.pt")
+    dev_preds = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/msmn-epoch4/dev_preds.pt")
+    dev_ys = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/msmn-epoch4/dev_y.pt")
+    dev_icd9s = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/msmn-epoch4/dev_icd9s.pt")
+    test_preds = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/msmn-epoch4/test_preds.pt")
+    test_ys = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/msmn-epoch4/test_y.pt")
+    test_icd9s = torch.load("/home/zhichaoyang/mimic3/KEPT/tmptodel/msmn-epoch4/test_icd9s.pt")
     # metrics = all_metrics(ys, preds, k=[5, 8, 15], threshold=threshold)
 
     # predsa = np.concatenate((preds, np.zeros((3372,50), dtype=float)-1.0), axis=1)
@@ -94,12 +106,12 @@ def main():
     predsa, ysa = stagfinal_eval(dev_dataset, dev_preds, dev_ys, dev_icd9s)
     threshold = find_threshold_micro(predsa, ysa)
     metricsa = all_metrics(ysa, predsa, k=[5, 8, 15, 50], threshold=threshold)
-    print(metricsa)
+    printresult(metricsa)
     predsa, ysa = stagfinal_eval(eval_dataset, test_preds, test_ys, test_icd9s)
 
     # metricsa = all_metrics(ysa, predsa, k=[5, 8, 15], threshold=threshold)
     metricsa = all_metrics(ysa, predsa, k=[5, 8, 15, 50], threshold=threshold)
-    print(metricsa)
+    printresult(metricsa)
 
     print("Done")
 
