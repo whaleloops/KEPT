@@ -62,7 +62,12 @@ torch.autograd.set_detect_anomaly(True)
 import wandb
 logger = logging.getLogger(__name__)
 
-
+def printresult(metrics):
+    print("------")
+    sort_orders  = sorted(metrics.items(), key=lambda x: x[0], reverse=True)
+    for k,v in sort_orders:
+        print(k+":"+str(v))
+        
 def deactivate_relevant_gradients(model, trainable_components, verbose=True):
     for param in model.parameters():
         param.requires_grad = False
@@ -304,7 +309,7 @@ def main():
     # Get the metric function
     def compute_metrics(p: EvalPrediction):
         preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
-        y = p.label_ids==10932
+        y = p.label_ids==config.label_yes
         result = all_metrics(y, preds, k=[5, 8, 15])
         return result
 
@@ -350,18 +355,18 @@ def main():
         for eval_dataset, task in zip(eval_datasets, tasks):
             p = trainer.predict(dev_dataset, metric_key_prefix="dev")
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
-            y = p.label_ids==10932
+            y = p.label_ids==config.label_yes
             threshold = find_threshold_micro(preds, y)
 
             p = trainer.predict(eval_dataset, metric_key_prefix="eval")
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
-            y = p.label_ids==10932
+            y = p.label_ids==config.label_yes
             # preds_new = modify_rule(y, preds, predict_dataset, train_dataset.ind2c, train_dataset.c2ind, tokenizer)
             # result = all_metrics(y, preds_new, k=[5, 8, 15])
             # preds = preds_new
 
-            metrics = all_metrics(y, preds, k=[5, 8, 15], threshold=threshold)
-            print(metrics)
+            metrics = all_metrics(y, preds, k=[5, 8, 15, 50], threshold=threshold)
+            printresult(metrics)
             max_eval_samples = (
                 data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
             )
@@ -381,7 +386,7 @@ def main():
 
             p = trainer.predict(predict_dataset, metric_key_prefix="predict")
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
-            y = p.label_ids==10932
+            y = p.label_ids==config.label_yes
             torch.save(preds, "./tmptodel/preds.pt")
             torch.save(y, "./tmptodel/y.pt")
             preds = torch.load("./tmptodel/preds.pt")

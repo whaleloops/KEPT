@@ -15,6 +15,14 @@ from collections import defaultdict
 
 InputDataClass = NewType("InputDataClass", Any)
 
+def proc_text(text):
+    text = text.lower().replace("\n"," ").replace("\r"," ")
+    text = re.sub('dr\.','doctor',text)
+    text = re.sub('m\.d\.','doctor',text)
+    text = re.sub('admission date:','',text)
+    text = re.sub('discharge date:','',text)
+    text = re.sub('--|__|==','',text)
+    return re.sub(r'  +', ' ', text)
 
 def get_headersandindex(input_str):
     input_str = input_str.lower()
@@ -248,21 +256,21 @@ class MimicFullDataset(Dataset):
         for index in range(self.len):
             text = self.df[index]['TEXT']
             text = re.sub(r'\[\*\*[^\]]*\*\*\]', '', text)  # remove any mimic special token like [**2120-2-28**] or [**Hospital1 3278**]
-            tmp = self.tokenizer.tokenize(descriptions + re.sub(r'  +', ' ', text.lower().replace("\n"," ")))
+            tmp = self.tokenizer.tokenize(descriptions + proc_text(text))
             if len(tmp) <= self.truncate_length:
                 num_pro_token.append(len(tmp))
-                self.df[index]['TEXT'] = descriptions + re.sub(r'  +', ' ', text.lower().replace("\n"," "))
+                self.df[index]['TEXT'] = descriptions + proc_text(text)
             else:
                 headers_pos = get_headersandindex(text)
                 if len(headers_pos) > 1:
                     new_text = get_subnote(text, headers_pos)
-                    tmp = self.tokenizer.tokenize(descriptions + re.sub(r'  +', ' ', new_text.lower().replace("\n"," ")))
                     countb += 1
                     text = new_text
+                    tmp = self.tokenizer.tokenize(descriptions + proc_text(text))
                 # else:
                 #     to_sav.append((str(self.df[index]['LABELS']),text))
                 num_pro_token.append(len(tmp))
-                self.df[index]['TEXT'] = descriptions + re.sub(r'  +', ' ', text.lower().replace("\n"," "))
+                self.df[index]['TEXT'] = descriptions + proc_text(text)
         num_pro_token = np.array(num_pro_token)
         print(f'Num of examples exceed max length {self.truncate_length}: {(num_pro_token > self.truncate_length).sum()} / {len(num_pro_token)}')
         print(f'Avg text length: {num_pro_token.mean()}')
