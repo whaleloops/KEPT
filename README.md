@@ -32,7 +32,7 @@ Modify wandb logging by changing run_coder.py this line wandb.init(project="mimi
 MIMIC-III 50 (2 A100 GPU):
 
 ```
-CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 --master_port 56666 run_coder.py \
+CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 --master_port 57666 run_coder.py \
                 --ddp_find_unused_parameters False \
                 --disable_tqdm True \
                 --version mimic3-50 --model_name_or_path MODEL_NAME_OR_PATH \
