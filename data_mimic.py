@@ -93,6 +93,7 @@ def load_code_descriptions(version='mimic3'):
             for row in r:
                 code = row[1]
                 desc = row[-1]
+                desc = " ".join(desc.lower().split()[:15]) 
                 desc_dict[reformat(code, True)] = desc
         with open("%s/D_ICD_PROCEDURES.csv" % (DATA_DIR), 'r') as descfile:
             r = csv.reader(descfile)
@@ -102,13 +103,16 @@ def load_code_descriptions(version='mimic3'):
                 code = row[1]
                 desc = row[-1]
                 if code not in desc_dict.keys():
+                    desc = " ".join(desc.lower().split()[:15]) 
                     desc_dict[reformat(code, False)] = desc
         with open('%s/ICD9_descriptions' % DATA_DIR, 'r') as labelfile:
             for _, row in enumerate(labelfile):
                 row = row.rstrip().split()
                 code = row[0]
                 if code not in desc_dict.keys():
-                    desc_dict[code] = ' '.join(row[1:])
+                    desc = ' '.join(row[1:])
+                    desc = " ".join(desc.lower().split()[:15]) 
+                    desc_dict[code] = desc
     return desc_dict
 
 def load_full_codes(train_path, version='mimic3'):
@@ -175,6 +179,24 @@ class MimicFullDataset(Dataset):
             top50icd9s = f.read().splitlines()  
         assert len(top50icd9s) == len(self.df)
 
+        #TODO: change
+        if mode == 'test':
+            num_new_added = []
+            num_both_aggr = []
+            with open("/home/zhichaoyang/mimic3/ICD-MSMN/sample_data/mimic3/keptgen_preds/mimic3_test_predtop50.txt", "r") as f:
+                top50icd9s_new = f.read().splitlines()  
+                top50icd9s_final = []
+                for a, b in zip(top50icd9s_new, top50icd9s):
+                    newset = set(a.split(';'))
+                    oldset = set(b.split(';'))
+                    tmp = list(newset.intersection(oldset)) + list(newset - oldset) + list(oldset - newset)
+                    num_new_added.append(len(newset - oldset))
+                    num_both_aggr.append(len(newset.intersection(oldset)))
+                    top50icd9s_final.append(";".join(tmp[:50]))
+            num_new_added = np.array(num_new_added)
+            num_both_aggr = np.array(num_both_aggr)
+            top50icd9s = top50icd9s_final
+
         self.ind2c, desc_dict = load_full_codes(self.train_path, version=version)
         # self.part_icd_codes = list(self.ind2c.values())
         self.c2ind = {c: ind for ind, c in self.ind2c.items()}
@@ -197,12 +219,12 @@ class MimicFullDataset(Dataset):
             icd_50_rank = ICD_50_RANK
             assert len(icd_50_rank) == len(self.ind2c)
             for icd9, info in icd_50_rank:
-                desc_list.append(desc_dict[icd9].lower().split(",")[0])
+                desc_list.append(desc_dict[icd9])
         else:
             desc_list = []
             icd_50_rank = [(v,0) for k,v in self.ind2c.items()]
             for icd9, info in icd_50_rank:
-                desc_list.append(desc_dict[icd9].lower().split(",")[0])
+                desc_list.append(desc_dict[icd9])
         
         # if term_count == 1:
         #     c_desc_list = desc_list
@@ -221,7 +243,7 @@ class MimicFullDataset(Dataset):
         #             tmp_desc = (tmp_desc * repeat_count)[0:term_count]
         #         c_desc_list.append(tmp_desc)
 
-        # descriptions = " " + " <mask>, ".join(desc_list) + " <mask>. "
+        # descriptions = " " + " <mask>; ".join(desc_list) + " <mask>. "
         # tmp = self.tokenizer.tokenize(descriptions)
         # self.global_window = len(tmp) + 1
         # assert self.global_window < 501 # only for gpu memory efficiency
@@ -256,14 +278,23 @@ class MimicFullDataset(Dataset):
             labels = []
             desc_list = [] 
             for icd9 in codes_new:
-                tmp = desc_dict[icd9].lower().split(",")[0]
-                desc_list.append(" ".join(tmp.split()[:7]))
+                tmp = desc_dict[icd9].lower()
+                tmp = " ".join(tmp.split()[:15])
+                desc_list.append(tmp)
                 if icd9 in codesgold:
                     labels.append(self.label_yes)
                 else:
                     labels.append(self.label_no)
                 icd9s.append(icd9)
-            descriptions = " " + " <mask>, ".join(desc_list) + " <mask>. "
+            #
+            # idx = np.random.choice(np.arange(len(desc_list)), len(desc_list), replace=False)
+            # desc_list = np.array(desc_list)
+            # labels = np.array(labels)
+            # icd9s = np.array(icd9s)
+            # desc_list = desc_list[idx]
+            # labels = labels[idx]
+            # icd9s = icd9s[idx]
+            descriptions = " " + " <mask>; ".join(desc_list) + " <mask>. "
             # 
             tmp = self.tokenizer.tokenize(descriptions)
             global_window = len(tmp) + 1
@@ -276,8 +307,8 @@ class MimicFullDataset(Dataset):
             #
             desc_list = [] 
             for icd9 in codes_new:
-                tmp = desc_dict[icd9].lower().split(",")[0]
-                desc_list.append(" ".join(tmp.split()[:7]))
+                tmp = desc_dict[icd9]
+                desc_list.append(tmp)
                 labels.append(self.label_yes)
                 icd9s.append(icd9)
             # assert len(desc_list) < 50
@@ -288,8 +319,8 @@ class MimicFullDataset(Dataset):
             counta = 0
             for counta in range(len(akey)):
                 if not akey[counta] in codes_new:
-                    tmp = desc_dict[akey[counta]].lower().split(",")[0]
-                    desc_list.append(" ".join(tmp.split()[:7]))
+                    tmp = desc_dict[akey[counta]]
+                    desc_list.append(tmp)
                     labels.append(self.label_no)
                     icd9s.append(akey[counta])
             assert len(desc_list) == len(labels)
@@ -304,7 +335,7 @@ class MimicFullDataset(Dataset):
             desc_list = desc_list[idx]
             labels = labels[idx]
             icd9s = icd9s[idx]
-            descriptions = " " + " <mask>, ".join(desc_list) + " <mask>. "
+            descriptions = " " + " <mask>; ".join(desc_list) + " <mask>. "
             # 
             tmp = self.tokenizer.tokenize(descriptions)
             global_window = len(tmp) + 1
@@ -380,13 +411,12 @@ class MimicFullDataset(Dataset):
 @dataclass
 class DataCollatorForMimic:
     global_attention_mask_size: int
+    mask_token_id: int
 
     def __call__(self, features: List[InputDataClass]) -> Dict[str, torch.Tensor]:
         first = features[0]
         batch = {}
         global_attention_mask_size = [f["WINDOW"] for f in features]
-        global_attention_mask_size = max(global_attention_mask_size)
-        global_attention_mask_size = min(global_attention_mask_size, 570)
 
         # Special handling for labels.
         # Ensure that tensor is created with the correct type
@@ -413,7 +443,16 @@ class DataCollatorForMimic:
 
         global_attention_mask = torch.zeros_like(batch["input_ids"])
         # global attention on cls token
-        global_attention_mask[:,0:global_attention_mask_size] = 1 
+        for ind, a in enumerate(global_attention_mask_size):
+            # if a > 580:
+            #     global_attention_mask[ind,0:290:2] = 1 
+            #     global_attention_mask[ind,290:a] = 1 
+            # else:
+            #     global_attention_mask[ind,0:a] = 1 
+            global_attention_mask[ind,0:a:2] = 1 
+        tmp = batch["input_ids"]==self.mask_token_id
+        global_attention_mask[tmp] = 1
+        # global_attention_mask[:,0:global_attention_mask_size:2] = 1 
         batch["global_attention_mask"] = global_attention_mask
 
         return batch

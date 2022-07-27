@@ -297,7 +297,7 @@ def main():
         trainable_components = model_args.finetune_terms.split(";")
         model = deactivate_relevant_gradients(model, trainable_components, verbose=True)
     if config.model_type == "longformer": 
-        data_collator = DataCollatorForMimic(global_attention_mask_size=train_dataset.global_window)
+        data_collator = DataCollatorForMimic(global_attention_mask_size=train_dataset.global_window, mask_token_id=tokenizer.mask_token_id)
     elif config.model_type == "led":
         data_collator = my_collate_fn_led
         model.use_cache=False
@@ -352,17 +352,20 @@ def main():
         tasks = ['mimic3']
         eval_datasets = [eval_dataset]
 
+        if not os.path.exists(os.path.join(training_args.output_dir, "tmptodel/")):
+            os.makedirs(os.path.join(training_args.output_dir, "tmptodel/"))
+
         for eval_dataset, task in zip(eval_datasets, tasks):
             p = trainer.predict(dev_dataset, metric_key_prefix="dev")
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
             y = p.label_ids==10932
             threshold = find_threshold_micro(preds, y)
-            torch.save(preds, "./tmptodel/dev_preds.pt")
-            torch.save(y, "./tmptodel/dev_y.pt")
+            torch.save(preds, os.path.join(os.path.join(training_args.output_dir, "tmptodel/"), "dev_preds.pt"))
+            torch.save(y, os.path.join(os.path.join(training_args.output_dir, "tmptodel/"), "dev_y.pt"))
             icd9s = []
             for a in dev_dataset.df:
                 icd9s.append(a['ICD9s'])
-            torch.save(icd9s, "./tmptodel/dev_icd9s.pt")
+            torch.save(icd9s, os.path.join(os.path.join(training_args.output_dir, "tmptodel/"), "dev_icd9s.pt"))
             predsa, ysa = stagfinal_eval(dev_dataset, preds, y, icd9s)
             threshold = find_threshold_micro(predsa, ysa)
 
@@ -372,12 +375,12 @@ def main():
             # preds_new = modify_rule(y, preds, predict_dataset, train_dataset.ind2c, train_dataset.c2ind, tokenizer)
             # result = all_metrics(y, preds_new, k=[5, 8, 15])
             # preds = preds_new
-            torch.save(preds, "./tmptodel/test_preds.pt")
-            torch.save(y, "./tmptodel/test_y.pt")
+            torch.save(preds, os.path.join(os.path.join(training_args.output_dir, "tmptodel/"), "test_preds.pt"))
+            torch.save(y, os.path.join(os.path.join(training_args.output_dir, "tmptodel/"), "test_y.pt"))
             icd9s = []
             for a in eval_dataset.df:
                 icd9s.append(a['ICD9s'])
-            torch.save(icd9s, "./tmptodel/test_icd9s.pt")
+            torch.save(icd9s, os.path.join(os.path.join(training_args.output_dir, "tmptodel/"), "test_icd9s.pt"))
             predsa, ysa = stagfinal_eval(eval_dataset, preds, y, icd9s)
 
             metrics = all_metrics(ysa, predsa, k=[5,8,15,50], threshold=threshold)
@@ -402,8 +405,8 @@ def main():
             p = trainer.predict(predict_dataset, metric_key_prefix="predict")
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
             y = p.label_ids==10932
-            preds = torch.load("./tmptodel/preds.pt")
-            y = torch.load("./tmptodel/y.pt")
+            # preds = torch.load("./tmptodel/preds.pt")
+            # y = torch.load("./tmptodel/y.pt")
 
             output_predict_file = os.path.join(training_args.output_dir, f"predict_results_{task}.txt")
             if trainer.is_world_process_zero():
