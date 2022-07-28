@@ -43,7 +43,7 @@ CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 -
                 --logging_first_step \
                 --output_dir ./saved_models/longformer-original-clinical-prompt2alpha
 ```
-A finetuned model is available [eere](https://drive.google.com/file/d/1sv8cad8H1ajcKUis6qJFc7-9e9kWVeAv/view?usp=sharing). To eval MIMIC-III 50:
+A finetuned model is available [here](https://drive.google.com/file/d/1sv8cad8H1ajcKUis6qJFc7-9e9kWVeAv/view?usp=sharing). To eval MIMIC-III 50:
 ```
 CUDA_VISIBLE_DEVICES=0 python run_coder.py \
                 --ddp_find_unused_parameters False \
