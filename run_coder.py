@@ -293,6 +293,7 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
+    # model.longformer.encoder.layer = model.longformer.encoder.layer[0:3] 
     if model_args.finetune_terms != 'no':
         trainable_components = model_args.finetune_terms.split(";")
         model = deactivate_relevant_gradients(model, trainable_components, verbose=True)
