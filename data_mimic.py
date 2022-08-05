@@ -209,7 +209,7 @@ class MimicFullDataset(Dataset):
             num_new_added = []
             num_both_aggr = []
             # with open(f"/home/zhichaoyang/mimic3/ICD-MSMN/sample_data/mimic3/keptgen_preds/mimic3_{mode}_predtop50.txt", "r") as f:
-            with open(f"/home/zhichaoyang/mimic3/KEPTGEN/aaamimic3_test_predtop50.txt", "r") as f:
+            with open(f"/home/zhichaoyang/mimic3/KEPTGEN/tmptodel/currentsota0805/aaamimic3_test_predtop50.txt", "r") as f:
                 top50icd9s_new = f.read().splitlines()  
                 top50icd9s_final = []
                 for a, b in zip(top50icd9s_new, top50icd9s):
