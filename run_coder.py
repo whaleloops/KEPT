@@ -20,7 +20,7 @@ import os
 import torch
 from torch import nn
 from torch.nn.parallel import DistributedDataParallel
-from data_mimic import MimicFullDataset, my_collate_fn, my_collate_fn_led, DataCollatorForMimic, modify_rule
+from data_mimic import MimicFullDataset, my_collate_fn, my_collate_fn_led, DataCollatorForMimic
 from tqdm import tqdm
 import json
 import sys
@@ -163,6 +163,18 @@ class DataTrainingArguments:
     version: Optional[str] = field(
         default=None, metadata={"help": "mimic version"}
     )
+    rerank_pred_folder1: Optional[str] = field(
+        default=None, metadata={"help": "prediction output to feed into reranker"}
+    )
+    rerank_pred_folder2: Optional[str] = field(
+        default=None, metadata={"help": "prediction output to feed into reranker"}
+    )
+    do_oracle: bool = field(
+        default=False,
+        metadata={
+            "help": "if to use oracle gold lables to feed into reranker"
+        },
+    )
 
 
 
@@ -269,9 +281,19 @@ def main():
     # word_embedding_path = training_args.word_embedding_path         
     # logger.info(f"Use word embedding from {word_embedding_path}")
     
-    train_dataset = MimicFullDataset(data_args.version, "train", data_args.max_seq_length, tokenizer, 30, 4) # TODO delete 30 and 8
-    dev_dataset   = MimicFullDataset(data_args.version, "dev", data_args.max_seq_length, tokenizer, 30, 4)
-    eval_dataset  = MimicFullDataset(data_args.version, "test", data_args.max_seq_length, tokenizer, 30, 4)
+    train_dataset = MimicFullDataset(data_args.version, "train", data_args.max_seq_length, tokenizer,
+        rerank_pred_file1=os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_train_predtop50.txt")
+    ) 
+    dev_dataset   = MimicFullDataset(data_args.version, "dev", data_args.max_seq_length, tokenizer, 
+        rerank_pred_file1=os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_dev_predtop50.txt"), 
+        rerank_pred_file2=os.path.join(data_args.rerank_pred_folder2, f"{data_args.version}_dev_predtop50.txt"), 
+        do_oracle=data_args.do_oracle
+    )
+    eval_dataset  = MimicFullDataset(data_args.version, "test", data_args.max_seq_length, tokenizer, 
+        rerank_pred_file1=os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_test_predtop50.txt"), 
+        rerank_pred_file2=os.path.join(data_args.rerank_pred_folder2, f"{data_args.version}_test_predtop50.txt"), 
+        do_oracle=data_args.do_oracle
+    )
 
     num_labels = train_dataset.code_count 
     # load config, model
@@ -368,6 +390,7 @@ def main():
             torch.save(icd9s, os.path.join(os.path.join(training_args.output_dir, "tmptodel/"), "dev_icd9s.pt"))
             predsa, ysa = stagfinal_eval(dev_dataset, preds, y, icd9s)
             threshold = find_threshold_micro(predsa, ysa)
+            print(f"dev threshold: {threshold}")
 
             p = trainer.predict(eval_dataset, metric_key_prefix="eval")
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
@@ -383,8 +406,10 @@ def main():
             torch.save(icd9s, os.path.join(os.path.join(training_args.output_dir, "tmptodel/"), "test_icd9s.pt"))
             predsa, ysa = stagfinal_eval(eval_dataset, preds, y, icd9s)
 
-            metrics = all_metrics(ysa, predsa, k=[5,8,15,50], threshold=threshold)
+            metrics = all_metrics(ysa, predsa, k=[5,8,15,50,75], threshold=threshold)
             printresult(metrics)
+            thresholda = find_threshold_micro(predsa, ysa)
+            print(f"test threshold: {thresholda}")
             max_eval_samples = (
                 data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
             )
