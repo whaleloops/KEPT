@@ -58,8 +58,8 @@ from transformers.trainer_utils import get_last_checkpoint, is_main_process
 
 from model import LongformerForMaskedLM
 
-torch.autograd.set_detect_anomaly(True)
-import wandb
+# torch.autograd.set_detect_anomaly(True)
+# import wandb
 logger = logging.getLogger(__name__)
 
 def printresult(metrics):
@@ -228,8 +228,8 @@ def main():
     training_args.broadcast_buffers = False
         
     # Setup logging
-    if is_main_process(training_args.local_rank):
-        wandb.init(project="mimic_coder", entity="whaleloops")
+    # if is_main_process(training_args.local_rank):
+    #     wandb.init(project="mimic_coder", entity="whaleloops")
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
