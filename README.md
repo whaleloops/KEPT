@@ -32,7 +32,7 @@ python collectrare50data.py
 
 ## Train and Eval
 
-Train MIMIC-III 50 (2 A100 GPU):
+Train MIMIC-III 50 (2 A100 GPU):  TODO: how to download MODEL_NAME_OR_PATH
 
 ```
 CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 --master_port 57666 run_coder.py \
@@ -46,7 +46,7 @@ CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 -
                 --logging_first_step \
                 --output_dir ./saved_models/longformer-original-clinical-prompt2alpha
 ```
-A finetuned model is available [here](https://drive.google.com/file/d/1sv8cad8H1ajcKUis6qJFc7-9e9kWVeAv/view?usp=sharing). To eval MIMIC-III 50:
+A finetuned model is available [here](https://drive.google.com/file/d/1sv8cad8H1ajcKUis6qJFc7-9e9kWVeAv/view?usp=sharing). To eval MIMIC-III 50, change DOWNLOAD_MODEL_NAME_OR_PATH to the downloaded path:
 ```
 CUDA_VISIBLE_DEVICES=0 python run_coder.py \
                 --ddp_find_unused_parameters False \
@@ -59,6 +59,8 @@ CUDA_VISIBLE_DEVICES=0 python run_coder.py \
                 --logging_first_step \
                 --output_dir OUTPUT_DIR
 ```
+
+TODO: how to run rare50
 
 ## Citation
 
