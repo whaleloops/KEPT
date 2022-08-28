@@ -20,7 +20,7 @@ import os
 import torch
 from torch import nn
 from torch.nn.parallel import DistributedDataParallel
-from data_mimic import MimicFullDataset, my_collate_fn, my_collate_fn_led, DataCollatorForMimic
+from data_mimic import MimicFullDataset, my_collate_fn, DataCollatorForMimic
 from tqdm import tqdm
 import json
 import sys
@@ -164,15 +164,21 @@ class DataTrainingArguments:
         default=None, metadata={"help": "mimic version"}
     )
     rerank_pred_folder1: Optional[str] = field(
-        default=None, metadata={"help": "prediction output to feed into reranker"}
+        default=None, metadata={"help": "prediction output1 from 1st stage common codes coder (such as MSMN) to feed into reranker"}
     )
     rerank_pred_folder2: Optional[str] = field(
-        default=None, metadata={"help": "prediction output to feed into reranker"}
+        default=None, metadata={"help": "prediction output2 from 1st stage few-shot codes coder (such as AGMHT) to feed into reranker"}
     )
     do_oracle: bool = field(
         default=False,
         metadata={
-            "help": "if to use oracle gold lables to feed into reranker"
+            "help": "if to use oracle gold icd code lables to feed into reranker"
+        },
+    )
+    global_attention_strides: Optional[int] = field(
+        default=3,
+        metadata={
+            "help": "how many gap between each (longformer) golabl attention token in prompt code descriptions, set to 1 for maximum accuracy, but requires more gpu memory."
         },
     )
 
@@ -280,18 +286,25 @@ def main():
 
     # word_embedding_path = training_args.word_embedding_path         
     # logger.info(f"Use word embedding from {word_embedding_path}")
-    
+    rerank_pred_file1 = os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_train_predtop50.txt") if not data_args.rerank_pred_folder1 is None else None
     train_dataset = MimicFullDataset(data_args.version, "train", data_args.max_seq_length, tokenizer,
-        rerank_pred_file1=os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_train_predtop50.txt")
+        rerank_pred_file1=rerank_pred_file1
     ) 
+    # train_dataset = MimicFullDataset(data_args.version, "train", data_args.max_seq_length, tokenizer,
+    #     rerank_pred_file1=rerank_pred_file1,isdebug=True
+    # ) 
+    rerank_pred_file1 = os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_dev_predtop50.txt") if not data_args.rerank_pred_folder1 is None else None
+    rerank_pred_file2 = os.path.join(data_args.rerank_pred_folder2, f"{data_args.version}_dev_predtop50.txt") if not data_args.rerank_pred_folder2 is None else None
     dev_dataset   = MimicFullDataset(data_args.version, "dev", data_args.max_seq_length, tokenizer, 
-        rerank_pred_file1=os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_dev_predtop50.txt"), 
-        rerank_pred_file2=os.path.join(data_args.rerank_pred_folder2, f"{data_args.version}_dev_predtop50.txt"), 
+        rerank_pred_file1=rerank_pred_file1, 
+        rerank_pred_file2=rerank_pred_file2, 
         do_oracle=data_args.do_oracle
     )
+    rerank_pred_file1 = os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_test_predtop50.txt") if not data_args.rerank_pred_folder1 is None else None
+    rerank_pred_file2 = os.path.join(data_args.rerank_pred_folder2, f"{data_args.version}_test_predtop50.txt") if not data_args.rerank_pred_folder2 is None else None
     eval_dataset  = MimicFullDataset(data_args.version, "test", data_args.max_seq_length, tokenizer, 
-        rerank_pred_file1=os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_test_predtop50.txt"), 
-        rerank_pred_file2=os.path.join(data_args.rerank_pred_folder2, f"{data_args.version}_test_predtop50.txt"), 
+        rerank_pred_file1=rerank_pred_file1, 
+        rerank_pred_file2=rerank_pred_file2, 
         do_oracle=data_args.do_oracle
     )
 
@@ -319,11 +332,8 @@ def main():
         trainable_components = model_args.finetune_terms.split(";")
         model = deactivate_relevant_gradients(model, trainable_components, verbose=True)
     if config.model_type == "longformer": 
-        data_collator = DataCollatorForMimic(global_attention_mask_size=train_dataset.global_window, mask_token_id=tokenizer.mask_token_id)
-    elif config.model_type == "led":
-        data_collator = my_collate_fn_led
-        model.use_cache=False
-        model.gradient_checkpointing=True 
+        global_attention_strides = data_args.global_attention_strides
+        data_collator = DataCollatorForMimic(global_attention_mask_size=train_dataset.global_window, mask_token_id=tokenizer.mask_token_id, global_attention_strides=global_attention_strides)
     else:
         data_collator = default_data_collator
 
@@ -388,7 +398,7 @@ def main():
             for a in dev_dataset.df:
                 icd9s.append(a['ICD9s'])
             torch.save(icd9s, os.path.join(os.path.join(training_args.output_dir, "tmptodel/"), "dev_icd9s.pt"))
-            predsa, ysa = stagfinal_eval(dev_dataset, preds, y, icd9s)
+            predsa, ysa = stagfinal_eval(dev_dataset, preds, y, icd9s, dev_dataset.acutal_data_per_summary)
             threshold = find_threshold_micro(predsa, ysa)
             print(f"dev threshold: {threshold}")
 
@@ -404,7 +414,7 @@ def main():
             for a in eval_dataset.df:
                 icd9s.append(a['ICD9s'])
             torch.save(icd9s, os.path.join(os.path.join(training_args.output_dir, "tmptodel/"), "test_icd9s.pt"))
-            predsa, ysa = stagfinal_eval(eval_dataset, preds, y, icd9s)
+            predsa, ysa = stagfinal_eval(eval_dataset, preds, y, icd9s, eval_dataset.acutal_data_per_summary)
 
             metrics = all_metrics(ysa, predsa, k=[5,8,15,50,75], threshold=threshold)
             printresult(metrics)
