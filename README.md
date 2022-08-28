@@ -8,6 +8,8 @@ This repository contains the implementation of our KEPT reranker model on the au
 * [NumPy](http://www.numpy.org/)
 * [PyTorch](http://pytorch.org/) (currently tested on version 1.9.0+cu111)
 * [Transformers](https://github.com/huggingface/transformers) (currently tested on version 4.16.2)
+* tqdm==4.62.2
+* ujson==5.3.0
 
 Full environment setting is lised [here](conda-environment.yaml).
 
