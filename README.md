@@ -9,24 +9,26 @@ This repository contains the implementation of our KEPT model on the auto icd co
 * [NumPy](http://www.numpy.org/)
 * [PyTorch](http://pytorch.org/) (currently tested on version 1.9.0+cu111)
 * [Transformers](https://github.com/huggingface/transformers) (currently tested on version 4.16.2)
+* tqdm==4.62.2
+* ujson==5.3.0
 
 Full environment setting is lised [here](conda-environment.yaml).
 
 ## Download / preprocess data
 One need to obtain licences to download MIMIC-III dataset. Once you obtain the MIMIC-III dataset, please follow [caml-mimic](https://github.com/jamesmullenbach/caml-mimic) to preprocess the dataset. You should obtain train_full.csv, test_full.csv, dev_full.csv, train_50.csv, test_50.csv, dev_50.csv after preprocessing. Please put them under sample_data/mimic3. Then you should use preprocess/generate_data_new.ipynb for generating json format dataset for train/dev/test. A new data will be saved in ./sample_data/mimic3.
-Quickroutes are provided to save time, you could download processed data 
-(
-[GDrive](https://drive.google.com/file/d/1QCc2BACIgv4d5Q5jDMxM5iSC4hOIv-fU/view?usp=sharing)
-) 
-and unzip in this folder.
 
-TODO: change to script
 
 ## Modify constant
 Modify constant.py : change DATA_DIR to where your preprocessed data located.
 
 Modify wandb logging by changing run_coder.py this line wandb.init(project="mimic_coder", entity="whaleloops")
 
+## Generate MIMIC-III-rare50 data
+Run command below and rare50 data will be created like mimic3-50l_xxx.json and xxx_50l.csv. The ./sample_data/mimic3 folder will look something like [this](data_files.PNG), without xxx_preds folders (they are prediction result for 2 stage reranker, see the correpdong branch to create those folders). 
+
+```
+python collectrare50data.py
+```
 
 ## Train and Eval
 
