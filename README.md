@@ -32,13 +32,13 @@ python collectrare50data.py
 
 ## Train and Eval
 
-Train MIMIC-III 50 (2 A100 GPU):  TODO: how to download MODEL_NAME_OR_PATH
+UMLS knowledge enhaced longformer is avail [here](https://huggingface.co/whaleloops/keptlongformer). To Train MIMIC-III 50 (2 A100 GPU):
 
 ```
 CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 --master_port 57666 run_coder.py \
                 --ddp_find_unused_parameters False \
                 --disable_tqdm True \
-                --version mimic3-50 --model_name_or_path MODEL_NAME_OR_PATH \
+                --version mimic3-50 --model_name_or_path whaleloops/keptlongformer \
                 --do_train --do_eval --max_seq_length 8192 \
                 --per_device_train_batch_size 1 --per_device_eval_batch_size 2 \
                 --learning_rate 1.5e-5 --weight_decay 1e-3 --adam_epsilon 1e-7 --num_train_epochs 8 \
