@@ -14,7 +14,7 @@ def stagfinal_eval(eval_dataset, preds, ys, icd9s, acutal_data_per_summary):
     error_cnt = 0
     with open(eval_dataset.path, "r") as f:
         df = ujson.load(f)
-    print(preds.min())
+    print("minimium prediction score "+str(preds.min()))
     min_preds = min(preds.min(), -25.0)
     num_icds = eval_dataset.code_count
     ysa = np.zeros((int(eval_dataset.len/acutal_data_per_summary), num_icds), dtype=int)

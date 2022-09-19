@@ -289,10 +289,10 @@ def main():
     rerank_pred_file1 = os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_train_predtop50.txt") if not data_args.rerank_pred_folder1 is None else None
     train_dataset = MimicFullDataset(data_args.version, "train", data_args.max_seq_length, tokenizer,
         rerank_pred_file1=rerank_pred_file1
-    ) 
+    )  
     # train_dataset = MimicFullDataset(data_args.version, "train", data_args.max_seq_length, tokenizer,
     #     rerank_pred_file1=rerank_pred_file1,isdebug=True
-    # ) 
+    # )   # TODO: delete
     rerank_pred_file1 = os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_dev_predtop50.txt") if not data_args.rerank_pred_folder1 is None else None
     rerank_pred_file2 = os.path.join(data_args.rerank_pred_folder2, f"{data_args.version}_dev_predtop50.txt") if not data_args.rerank_pred_folder2 is None else None
     dev_dataset   = MimicFullDataset(data_args.version, "dev", data_args.max_seq_length, tokenizer, 
@@ -300,6 +300,11 @@ def main():
         rerank_pred_file2=rerank_pred_file2, 
         do_oracle=data_args.do_oracle
     )
+
+    # train_dataset.df = dev_dataset.df # TODO: delete
+    # train_dataset.len = 300 # TODO: delete
+
+
     rerank_pred_file1 = os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_test_predtop50.txt") if not data_args.rerank_pred_folder1 is None else None
     rerank_pred_file2 = os.path.join(data_args.rerank_pred_folder2, f"{data_args.version}_test_predtop50.txt") if not data_args.rerank_pred_folder2 is None else None
     eval_dataset  = MimicFullDataset(data_args.version, "test", data_args.max_seq_length, tokenizer, 
@@ -307,6 +312,7 @@ def main():
         rerank_pred_file2=rerank_pred_file2, 
         do_oracle=data_args.do_oracle
     )
+    # eval_dataset.len = 300 # TODO: delete
 
     num_labels = train_dataset.code_count 
     # load config, model
@@ -342,7 +348,17 @@ def main():
     def compute_metrics(p: EvalPrediction):
         preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
         y = p.label_ids==10932
-        result = all_metrics(y, preds, k=[5, 8, 15])
+        icd9s = []
+        if preds.shape[0] == len(eval_dataset):
+            tmp_dataset = eval_dataset
+        elif preds.shape[0] == len(dev_dataset):
+            tmp_dataset = dev_dataset
+        else:
+            raise Exception("preds dimension 0 does not match length of eval_dataset or dev_dataset")
+        for a in tmp_dataset.df:
+            icd9s.append(a['ICD9s'])
+        predsa, ysa = stagfinal_eval(tmp_dataset, preds, y, icd9s, tmp_dataset.acutal_data_per_summary)
+        result = all_metrics(ysa, predsa, k=[5, 8, 15])
         return result
 
     # Initialize our Trainer

@@ -234,7 +234,7 @@ class MimicFullDataset(Dataset):
                 top50icd9s = top50icd9s_final
 
         # prep prompt
-        if version == "mimic3-50": #TODO: remove unique sorted ICD_50_RANK for mimic3-50
+        if version == "mimic3-50": 
             desc_list = []
             icd_50_rank = ICD_50_RANK
             assert len(icd_50_rank) == len(self.ind2c)
@@ -324,31 +324,32 @@ class MimicFullDataset(Dataset):
         to_sav = []
         countb = 0
         df_new = []
-        group_size = 50 #TODO: change this to 75
+        group_size = 50 
         total_can_size = len(top50icd9s[0].split(";"))
         self.acutal_data_per_summary = total_can_size//group_size
         if not isdebug:
             for index in range(self.len):
+                top50icd9s_list = str(top50icd9s[index]).split(';')
+                text = self.df[index]['TEXT']
+                text = re.sub(r'\[\*\*[^\]]*\*\*\]', '', text)  # remove any mimic special token like [**2120-2-28**] or [**Hospital1 3278**]
+                tmp = self.tokenizer.tokenize(re.sub(r'  +', ' ', text.lower().replace("\n"," ")))
+                if len(tmp) <= self.truncate_length-150:
+                    num_pro_token.append(len(tmp))
+                else:
+                    headers_pos = get_headersandindex(text)
+                    if len(headers_pos) > 1:
+                        new_text = get_subnote(text, headers_pos)
+                        tmp = self.tokenizer.tokenize(re.sub(r'  +', ' ', new_text.lower().replace("\n"," ")))
+                        countb += 1
+                        text = new_text
+                    num_pro_token.append(len(tmp))
+                # for each code
                 for can_index in range(0, total_can_size, group_size):
-                    top50icd9s_list = str(top50icd9s[index]).split(';')
                     toadd = dict()
-                    text = self.df[index]['TEXT']
-                    text = re.sub(r'\[\*\*[^\]]*\*\*\]', '', text)  # remove any mimic special token like [**2120-2-28**] or [**Hospital1 3278**]
                     if do_oracle:
                         descriptions, labels, global_window, icd9s = get_codes_description_oracle(top50icd9s_list[can_index:can_index+group_size], self.df[index]['LABELS'], desc_dict, list(self.c2ind.keys()))
                     else:
                         descriptions, labels, global_window, icd9s = get_codes_description_top50(top50icd9s_list[can_index:can_index+group_size], self.df[index]['LABELS'], desc_dict) 
-                    tmp = self.tokenizer.tokenize(descriptions + re.sub(r'  +', ' ', text.lower().replace("\n"," ")))
-                    if len(tmp) <= self.truncate_length:
-                        num_pro_token.append(len(tmp))
-                    else:
-                        headers_pos = get_headersandindex(text)
-                        if len(headers_pos) > 1:
-                            new_text = get_subnote(text, headers_pos)
-                            tmp = self.tokenizer.tokenize(descriptions + re.sub(r'  +', ' ', new_text.lower().replace("\n"," ")))
-                            countb += 1
-                            text = new_text
-                        num_pro_token.append(len(tmp))
                     toadd['TEXT'] = descriptions + re.sub(r'  +', ' ', text.lower().replace("\n"," "))
                     toadd['LABELS'] = labels
                     toadd['WINDOW'] = global_window
