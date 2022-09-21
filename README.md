@@ -32,7 +32,9 @@ python collectrare50data.py
 
 ## Train and Eval
 
-UMLS knowledge enhaced longformer is avail [here](https://huggingface.co/whaleloops/keptlongformer). To Train MIMIC-III 50 (2 A100 GPU):
+UMLS knowledge enhaced longformer is avail [here](https://huggingface.co/whaleloops/keptlongformer). 
+
+To Train MIMIC-III 50 (2 A100 GPU):
 
 ```
 CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 --master_port 57666 run_coder.py \
@@ -46,6 +48,21 @@ CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 -
                 --logging_first_step \
                 --output_dir ./saved_models/longformer-original-clinical-prompt2alpha
 ```
+
+To Train MIMIC-III 50 (2 V100 GPU), with slightly less accuracy from less global attention in the prompt as global_attention_strides=3:
+```
+CUDA_VISIBLE_DEVICES=2,3 python -m torch.distributed.launch --nproc_per_node 2 --master_port 57667 run_coder.py \
+                --ddp_find_unused_parameters False \
+                --disable_tqdm True \
+                --version mimic3-50 --model_name_or_path whaleloops/keptlongformer \
+                --do_train --do_eval --max_seq_length 8192 \
+                --per_device_train_batch_size 1 --per_device_eval_batch_size 2 \
+                --learning_rate 1.5e-5 --weight_decay 1e-3 --adam_epsilon 1e-7 --num_train_epochs 8 \
+                --evaluation_strategy epoch --save_strategy epoch \
+                --logging_first_step --global_attention_strides 3 \
+                --output_dir ./saved_models/longformer-original-clinical-prompt2alpha
+```
+
 A finetuned model is available [here](https://drive.google.com/file/d/1sv8cad8H1ajcKUis6qJFc7-9e9kWVeAv/view?usp=sharing). To eval MIMIC-III 50, change DOWNLOAD_MODEL_NAME_OR_PATH to the downloaded path:
 ```
 CUDA_VISIBLE_DEVICES=0 python run_coder.py \
