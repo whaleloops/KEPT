@@ -1,7 +1,7 @@
 
 # KEPT
 
-This repository contains the implementation of our KEPT model on the auto icd coding task presented in xxx.
+This repository contains the implementation of our KEPT model on the auto icd coding task presented in xxx. This branch only contain code to experiment MIMIC-50 and MIMIC-50-rare in the paper. For MIMIC-full experiment, see the [rerank300 branch](https://github.com/whaleloops/KEPT/tree/rerank300).
 
 ## Dependencies
 
@@ -12,7 +12,12 @@ This repository contains the implementation of our KEPT model on the auto icd co
 * tqdm==4.62.2
 * ujson==5.3.0
 
-Full environment setting is lised [here](conda-environment.yaml).
+Full environment setting is lised [here](conda-environment.yaml) and can be installed through:
+
+```
+conda env create -f conda-environment.yaml
+conda activate ctorch191
+```
 
 ## Download / preprocess data
 One need to obtain licences to download MIMIC-III dataset. Once you obtain the MIMIC-III dataset, please follow [caml-mimic](https://github.com/jamesmullenbach/caml-mimic) to preprocess the dataset. You should obtain train_full.csv, test_full.csv, dev_full.csv, train_50.csv, test_50.csv, dev_50.csv after preprocessing. Please put them under sample_data/mimic3. Then you should use preprocess/generate_data_new.ipynb for generating json format dataset for train/dev/test. A new data will be saved in ./sample_data/mimic3.
