@@ -1,6 +1,6 @@
 # KEPT
 
-This repository contains the implementation of our KEPT reranker model on the auto icd coding task presented in AAAI.
+This repository contains the implementation of our KEPT model on the auto icd coding task presented in xxx.
 
 ## Dependencies
 
@@ -11,7 +11,12 @@ This repository contains the implementation of our KEPT reranker model on the au
 * tqdm==4.62.2
 * ujson==5.3.0
 
-Full environment setting is lised [here](conda-environment.yaml).
+Full environment setting is lised [here](conda-environment.yaml) and can be installed through:
+
+```
+conda env create -f conda-environment.yaml
+conda activate ctorch191
+```
 
 ## Download / preprocess data
 One need to obtain licences to download MIMIC-III dataset. Once you obtain the MIMIC-III dataset, please follow [caml-mimic](https://github.com/jamesmullenbach/caml-mimic) to preprocess the dataset. You should obtain train_full.csv, test_full.csv, dev_full.csv, train_50.csv, test_50.csv, dev_50.csv after preprocessing. Please put them under ./sample_data/mimic3/. Then you should use preprocess/generate_data_new.ipynb for generating json format dataset for train/dev/test. A new data will be saved in ./sample_data/mimic3/. 
@@ -68,12 +73,14 @@ With the following reuslt:
 
 ## Train
 
-You could also train with below command on 2 A100 (40GB) GPU with 80 hour+. Change PATH_TO_MSMN_MODEL to KEPTLongformer path.
+UMLS knowledge enhaced longformer is avail [here](https://huggingface.co/whaleloops/keptlongformer). 
+
+You could also train with below command on 2 A100 (40GB) GPU with 80 hour+. 
 ```
 CUDA_VISIBLE_DEVICES=4,5 python -m torch.distributed.launch --nproc_per_node 2 --master_port 56666 run_coder.py \
                 --ddp_find_unused_parameters False --seed 47 \
                 --disable_tqdm True \
-                --version mimic3 --model_name_or_path PATH_TO_MSMN_MODEL \
+                --version mimic3 --model_name_or_path whaleloops/keptlongformer \
                 --do_train --do_eval --max_seq_length 8192 \
                 --per_device_train_batch_size 1 --per_device_eval_batch_size 2 \
                 --learning_rate 1.5e-5 --weight_decay 1e-4 --adam_epsilon 1e-7 --num_train_epochs 4 --warmup_ratio 0.1 \
