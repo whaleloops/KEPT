@@ -163,7 +163,12 @@ class DataTrainingArguments:
     version: Optional[str] = field(
         default=None, metadata={"help": "mimic version"}
     )
-
+    global_attention_strides: Optional[int] = field(
+        default=3,
+        metadata={
+            "help": "how many gap between each (longformer) golabl attention token in prompt code descriptions, set to 1 for maximum accuracy, but requires more gpu memory."
+        },
+    )
 
 
 @dataclass
@@ -298,7 +303,8 @@ def main():
         trainable_components = model_args.finetune_terms.split(";")
         model = deactivate_relevant_gradients(model, trainable_components, verbose=True)
     if config.model_type == "longformer": 
-        data_collator = DataCollatorForMimic(global_attention_mask_size=train_dataset.global_window)
+        global_attention_strides = data_args.global_attention_strides
+        data_collator = DataCollatorForMimic(global_attention_mask_size=train_dataset.global_window,global_attention_strides=global_attention_strides)
     elif config.model_type == "led":
         data_collator = my_collate_fn_led
         model.use_cache=False

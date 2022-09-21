@@ -318,6 +318,7 @@ class MimicFullDataset(Dataset):
 @dataclass
 class DataCollatorForMimic:
     global_attention_mask_size: int
+    global_attention_strides: int
 
     def __call__(self, features: List[InputDataClass]) -> Dict[str, torch.Tensor]:
         first = features[0]
@@ -348,7 +349,7 @@ class DataCollatorForMimic:
 
         global_attention_mask = torch.zeros_like(batch["input_ids"])
         # global attention on cls token
-        global_attention_mask[:,0:self.global_attention_mask_size] = 1 
+        global_attention_mask[:,0:self.global_attention_mask_size:self.global_attention_strides] = 1 
         batch["global_attention_mask"] = global_attention_mask
 
         return batch
