@@ -35,6 +35,11 @@ Run command below and rare50 data will be created like mimic3-50l_xxx.json and x
 python collectrare50data.py
 ```
 
+
+## Hyperparameter and config setting
+See [wandb](https://wandb.ai/whaleloops/mimic_coder/runs/198spced/).
+
+
 ## Train and Eval
 
 UMLS knowledge enhaced longformer is avail [here](https://huggingface.co/whaleloops/keptlongformer). 
