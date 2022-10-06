@@ -36,8 +36,8 @@ python collectrare50data.py
 ```
 
 
-## Hyperparameter and config setting
-See [wandb](https://wandb.ai/whaleloops/mimic_coder/runs/198spced/).
+## Hyperparameter and config setting to reproduce
+If needed, see [wandb](https://wandb.ai/whaleloops/mimic_coder/runs/198spced/).
 
 
 ## Train and Eval
