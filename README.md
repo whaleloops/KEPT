@@ -98,3 +98,12 @@ Please cite the following if you find this repo useful.
 
 See the [LICENSE](LICENSE) file for more details.
 
+## Branches
+### Supported branches
+* [`main`](https://github.com/whaleloops/KEPT/tree/main): KEPTLongformer on MIMIC-III-50 and MIMIC-III-rare50.
+* [`rerank300`](https://github.com/whaleloops/KEPT/tree/rerank300): KEPTLongformer as reranker on MIMIC-III-full.
+
+### Deprecated branches
+* [`cls50`](https://github.com/whaleloops/KEPT/tree/cls50): 1 global attention per label code description
+* [`syn_explicit`](https://github.com/whaleloops/KEPT/tree/syn_explicit): Adding synonyms like MSMN per label code description
+
