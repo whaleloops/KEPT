@@ -29,10 +29,10 @@ All predictions order follows the same train/dev/test .json order that you just 
 
 ## Eval
 
-A finetuned MSMN model is available [here](https://drive.google.com/drive/folders/1ylqyuP06CgHQN1KPJ0QTTptmmBFx8O9P?usp=sharing). To eval MIMIC-III on MSMN + GP SOAP:
+A finetuned MSMN70 model is available [here](https://drive.google.com/drive/folders/1ylqyuP06CgHQN1KPJ0QTTptmmBFx8O9P?usp=sharing). To eval MIMIC-III on MSMN + GP SOAP:
 ```
 CUDA_VISIBLE_DEVICES=7 WANDB_MODE=disabled python run_coder.py --overwrite_output_dir --seed 47 \
---version mimic3 --model_name_or_path PATH_TO_MSMN_MODEL \
+--version mimic3 --model_name_or_path PATH_TO_MSMN70_MODEL \
 --do_eval --max_seq_length 8192 --per_device_train_batch_size 1 --per_device_eval_batch_size 4 \
 --evaluation_strategy epoch --save_strategy no --logging_first_step --eval_steps 10 --save_steps 100000 \
 --rerank_pred_folder1 ./sample_data/mimic3/msmn_preds/ \
@@ -42,29 +42,30 @@ CUDA_VISIBLE_DEVICES=7 WANDB_MODE=disabled python run_coder.py --overwrite_outpu
 With the following reuslt:
 | Metric  | Score |
 | ------------- | ------------- |
-| acc_macro   | = 0.08786680886727369|
-| acc_micro   | =  0.4265015806111691|
-| auc_macro   | =  0.7271945707693832|
-| auc_micro   | =  0.8752969149719587|
+ |acc_micro| =0.41833426240884586|
+ |acc_macro| =0.10366394048932563|
 | eval_samples| =                3372|
-| f1_at_15    | =  0.5934809738405847|
-| f1_at_5     | =  0.4311171236707107|
-| f1_at_50    | =  0.4017349062524513|
-| f1_at_8     | =  0.5338691886573289|
-| f1_macro    | = 0.12057606836332291|
-| f1_micro    | =  0.5979686057248373|
-| prec_at_15  | =  0.6136812969553183|
-| prec_at_5   | =  0.8456109134045078|
-| prec_at_50  | =  0.2699584816132859|
-| prec_at_8   | =  0.7712781731909846|
-| prec_macro  | = 0.12525060454031595|
-| prec_micro  | =  0.6408980376632912|
-| rec_at_15   | =  0.5745681247305229|
-| rec_at_5    | =  0.2893071852073718|
-| rec_at_50   | =   0.784846800502318|
-| rec_at_8    | = 0.40821542080441947|
-| rec_macro   | = 0.11623789954909551|
-| rec_micro   | =  0.5604292354861033|
+ |rec_micro| =0.6061385289948231|
+ |rec_macro| =0.15267296785350526|
+ |rec_at_8| =0.40104061434674254|
+ |rec_at_75| =0.8158778848621171|
+ |rec_at_50| =0.8026150205285459|
+ |rec_at_5| =0.2830237353017691|
+ |rec_at_15| =0.5695721694625864|
+ |prec_micro| =0.5744996640992382|
+ |prec_macro| =0.14223086129915702|
+ |prec_at_8| =0.755523428232503|
+ |prec_at_75| =0.1903914590747331|
+ |prec_at_50| =0.2782621589561092|
+ |prec_at_5| =0.8254448398576513|
+ |prec_at_15| =0.6064650059311981|
+ |f1_micro| =0.5898951657536106|
+ |f1_macro| =0.14726704483488753|
+ |f1_at_8| =0.523958153040988|
+ |f1_at_75| =0.30873678476178223|
+ |f1_at_50| =0.4132521116402119|
+ |f1_at_5| =0.42151935940715995|
+ |f1_at_15| =0.5874399149256664|
 
 Similarly, to eval MIMIC-III on MSMN + AGMHT:
 ```
