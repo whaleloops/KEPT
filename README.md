@@ -1,7 +1,10 @@
 
+
 # KEPT
 
-This repository contains the implementation of our KEPT model on the auto icd coding task presented in xxx. This branch only contain code to experiment MIMIC-50 and MIMIC-50-rare in the paper. For MIMIC-full experiment, see the [rerank300 branch](https://github.com/whaleloops/KEPT/tree/rerank300).
+This repository contains the implementation of our [KEPT](https://arxiv.org/abs/2210.03304) model on the auto icd coding task presented in EMNLP. This branch only contain code to experiment MIMIC-III-50 and MIMIC-III-rare50 in the paper. For MIMIC-III-full experiments, see the [rerank300 branch](https://github.com/whaleloops/KEPT/tree/rerank300).
+
+Thanks to Zheng Yuan for opensourcing [MSMN](https://github.com/GanjinZero/ICD-MSMN) project, our evaluation code and data preprocsing step is heavily based on their repo. 
 
 ## Dependencies
 
@@ -26,7 +29,7 @@ One need to obtain licences to download MIMIC-III dataset. Once you obtain the M
 ## Modify constant
 Modify constant.py : change DATA_DIR to where your preprocessed data located.
 
-Modify wandb logging by changing run_coder.py this line wandb.init(project="mimic_coder", entity="whaleloops")
+To enable wandb, modify wandb.init(project="PROJECTNAME", entity="WANDBACCOUNT") in run_coder.py.
 
 ## Generate MIMIC-III-rare50 data
 Run command below and rare50 data will be created like mimic3-50l_xxx.json and xxx_50l.csv. The ./sample_data/mimic3 folder will look something like [this](data_files.PNG), without xxx_preds folders (they are prediction result for 2 stage reranker, see the correpdong branch to create those folders). 
@@ -59,9 +62,9 @@ CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node 2 -
                 --output_dir ./saved_models/longformer-original-clinical-prompt2alpha
 ```
 
-To Train MIMIC-III 50 (2 V100 GPU), with slightly less accuracy from less global attention in the prompt as global_attention_strides=3:
+To Train MIMIC-III 50 (2 V100 GPU), with slightly less accuracy from less global attention in the prompt as global_attention_strides=3. More details could be found in [Table A.5](https://arxiv.org/abs/2210.03304):
 ```
-CUDA_VISIBLE_DEVICES=2,3 python -m torch.distributed.launch --nproc_per_node 2 --master_port 57667 run_coder.py \
+CUDA_VISIBLE_DEVICES=2,3 python -m torch.distributed.launch --nproc_per_node 2 --master_port 57666 run_coder.py \
                 --ddp_find_unused_parameters False \
                 --disable_tqdm True \
                 --version mimic3-50 --model_name_or_path whaleloops/keptlongformer \
@@ -70,7 +73,7 @@ CUDA_VISIBLE_DEVICES=2,3 python -m torch.distributed.launch --nproc_per_node 2 -
                 --learning_rate 1.5e-5 --weight_decay 1e-3 --adam_epsilon 1e-7 --num_train_epochs 8 \
                 --evaluation_strategy epoch --save_strategy epoch \
                 --logging_first_step --global_attention_strides 3 \
-                --output_dir ./saved_models/longformer-original-clinical-prompt2alpha
+                --output_dir OUTPUT_DIR
 ```
 
 A finetuned model (where global_attention_strides=1) is available [here](https://drive.google.com/file/d/1sv8cad8H1ajcKUis6qJFc7-9e9kWVeAv/view?usp=sharing). To eval MIMIC-III 50, change DOWNLOAD_MODEL_NAME_OR_PATH to the downloaded path:
@@ -87,11 +90,31 @@ CUDA_VISIBLE_DEVICES=0 python run_coder.py \
                 --output_dir OUTPUT_DIR
 ```
 
-TODO: how to run rare50
+To train and eval MIMIC-III rare50 by tuning only bias term and lm_head like [BitFit](https://aclanthology.org/2022.acl-short.1/), change DOWNLOAD_MODEL_NAME_OR_PATH to the downloaded path:
+```
+CUDA_VISIBLE_DEVICES=2,3 python -m torch.distributed.launch --nproc_per_node 2 --master_port 57666 run_coder.py \
+                --ddp_find_unused_parameters False \
+                --finetune_terms "bias;lm_head" \
+                --disable_tqdm True \
+                --version mimic3-50l --model_name_or_path DOWNLOAD_MODEL_NAME_OR_PATH \
+                --do_train --do_eval --max_seq_length 8192 \
+                --per_device_train_batch_size 1 --per_device_eval_batch_size 2 \
+                --learning_rate 1e-3 --num_train_epochs 8 \
+                --evaluation_strategy epoch --save_strategy epoch \
+                --load_best_model_at_end True --metric_for_best_model eval_f1_macro --greater_is_better True \
+                --logging_first_step --global_attention_strides 1 \
+                --output_dir OUTPUT_DIR
+```
 
 ## Citation
 
-Please cite the following if you find this repo useful.
+```
+@inproceedings{Yang2022KnowledgeIP,
+  title={Knowledge Injected Prompt Based Fine-tuning for Multi-label Few-shot ICD Coding},
+  author={Zhichao Yang and Shufan Wang and Bhanu Pratap Singh Rawat and Avijit Mitra and Hong Yu},
+  year={2022}
+}
+```
 
 
 ## License
