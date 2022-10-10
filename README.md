@@ -1,8 +1,10 @@
 # KEPT
 
-This repository contains the implementation of our KEPT model on the auto icd coding task presented in xxx.
+This repository contains the implementation of our [KEPT](https://arxiv.org/abs/2210.03304) model on the auto icd coding task presented in EMNLP. This rerank300 branch only contain code to MIMIC-III-full experiments. For MIMIC-III-50 and MIMIC-III-rare50 experiments in the paper, see the [main branch](https://github.com/whaleloops/KEPT/tree/main).
 
-## Dependencies
+Thanks to Zheng Yuan for opensourcing [MSMN](https://github.com/GanjinZero/ICD-MSMN) project, our evaluation code and data preprocsing step is heavily based on their repo. 
+
+## Dependencies (same as main)
 
 * Python 3
 * [NumPy](http://www.numpy.org/)
@@ -18,12 +20,14 @@ conda env create -f conda-environment.yaml
 conda activate ctorch191
 ```
 
-## Download / preprocess data
+## Download / preprocess data (same as main)
 One need to obtain licences to download MIMIC-III dataset. Once you obtain the MIMIC-III dataset, please follow [caml-mimic](https://github.com/jamesmullenbach/caml-mimic) to preprocess the dataset. You should obtain train_full.csv, test_full.csv, dev_full.csv, train_50.csv, test_50.csv, dev_50.csv after preprocessing. Please put them under ./sample_data/mimic3/. Then you should use preprocess/generate_data_new.ipynb for generating json format dataset for train/dev/test. A new data will be saved in ./sample_data/mimic3/. 
 
 
-## Modify constant
+## Modify constant (same as main)
 Modify constant.py : change DATA_DIR to where your preprocessed data located such as ./sample_data
+
+To enable wandb, modify wandb.init(project="PROJECTNAME", entity="WANDBACCOUNT") in run_coder.py.
 
 ## Collect 1st stage model predictions
 To generate predictions from MSMN, see their repo [here](https://github.com/GanjinZero/ICD-MSMN). To save your time, we ran their code and top300 predictions are available [here](https://drive.google.com/drive/folders/1UZWn-uokPYVejY-9ljZoTlRt8t7iQhcV?usp=sharing), download the whole folder and unzip folder to ./sample_data/mimic3/.
@@ -31,10 +35,10 @@ To generate predictions from MSMN, see their repo [here](https://github.com/Ganj
 
 ## Eval
 
-A finetuned model is available [here](https://drive.google.com/drive/folders/1ia0PxQ3b35q22_Wwj39Em99qley_nAwy?usp=sharing). To eval MIMIC-III-full:
+A finetuned model is available [here](https://drive.google.com/drive/folders/1ia0PxQ3b35q22_Wwj39Em99qley_nAwy?usp=sharing). To eval MIMIC-III-full: change PATH_TO_MSMN300_MODEL to the downloaded path.
 ```
 CUDA_VISIBLE_DEVICES=7 WANDB_MODE=disabled python run_coder.py --overwrite_output_dir --seed 47 \
---version mimic3 --model_name_or_path PATH_TO_MSMN_MODEL \
+--version mimic3 --model_name_or_path PATH_TO_MSMN300_MODEL \
 --do_eval --max_seq_length 8192 --per_device_train_batch_size 1 --per_device_eval_batch_size 4 \
 --evaluation_strategy epoch --save_strategy no --logging_first_step --eval_steps 10 --save_steps 100000 \
 --rerank_pred_folder1 ./sample_data/mimic3/msmn_300_preds --global_attention_strides 3 \
@@ -93,8 +97,13 @@ CUDA_VISIBLE_DEVICES=4,5 python -m torch.distributed.launch --nproc_per_node 2 -
 
 ## Citation
 
-Please cite the following if you find this repo useful.
-
+```
+@inproceedings{Yang2022KnowledgeIP,
+  title={Knowledge Injected Prompt Based Fine-tuning for Multi-label Few-shot ICD Coding},
+  author={Zhichao Yang and Shufan Wang and Bhanu Pratap Singh Rawat and Avijit Mitra and Hong Yu},
+  year={2022}
+}
+```
 
 ## License
 
