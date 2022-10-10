@@ -221,8 +221,8 @@ def main():
     training_args.broadcast_buffers = False
         
     # Setup logging
-    if is_main_process(training_args.local_rank):
-        wandb.init(project="mimic_coder", entity="whaleloops")
+    # if is_main_process(training_args.local_rank):
+    #     wandb.init(project="mimic_coder", entity="whaleloops")
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
