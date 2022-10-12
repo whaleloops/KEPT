@@ -2,9 +2,13 @@
 
 # KEPT
 
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/knowledge-injected-prompt-based-fine-tuning/medical-code-prediction-on-mimic-iii)](https://paperswithcode.com/sota/medical-code-prediction-on-mimic-iii?p=knowledge-injected-prompt-based-fine-tuning)
+
 This repository contains the implementation of our [KEPT](https://arxiv.org/abs/2210.03304) model on the auto icd coding task presented in EMNLP. This branch only contain code to experiment MIMIC-III-50 and MIMIC-III-rare50 in the paper. For MIMIC-III-full experiments, see the [rerank300 branch](https://github.com/whaleloops/KEPT/tree/rerank300).
 
+
 Thanks to Zheng Yuan for opensourcing [MSMN](https://github.com/GanjinZero/ICD-MSMN) project, our evaluation code and data preprocsing step is heavily based on their repo. 
+
 
 ## Dependencies
 
