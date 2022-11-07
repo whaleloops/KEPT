@@ -175,6 +175,12 @@ class DataTrainingArguments:
             "help": "if to use oracle gold icd code lables to feed into reranker"
         },
     )
+    do_lower: bool = field(
+        default=True,
+        metadata={
+            "help": "if to lowercase discharge summary"
+        },
+    )
     global_attention_strides: Optional[int] = field(
         default=3,
         metadata={
@@ -288,7 +294,8 @@ def main():
     # logger.info(f"Use word embedding from {word_embedding_path}")
     rerank_pred_file1 = os.path.join(data_args.rerank_pred_folder1, f"{data_args.version}_train_predtop50.txt") if not data_args.rerank_pred_folder1 is None else None
     train_dataset = MimicFullDataset(data_args.version, "train", data_args.max_seq_length, tokenizer,
-        rerank_pred_file1=rerank_pred_file1
+        rerank_pred_file1=rerank_pred_file1,
+        do_lower = data_args.do_lower
     )  
     # train_dataset = MimicFullDataset(data_args.version, "train", data_args.max_seq_length, tokenizer,
     #     rerank_pred_file1=rerank_pred_file1,isdebug=True
@@ -298,7 +305,8 @@ def main():
     dev_dataset   = MimicFullDataset(data_args.version, "dev", data_args.max_seq_length, tokenizer, 
         rerank_pred_file1=rerank_pred_file1, 
         rerank_pred_file2=rerank_pred_file2, 
-        do_oracle=data_args.do_oracle
+        do_oracle=data_args.do_oracle,
+        do_lower = data_args.do_lower
     )
 
     # train_dataset.df = dev_dataset.df # TODO: delete
@@ -310,7 +318,8 @@ def main():
     eval_dataset  = MimicFullDataset(data_args.version, "test", data_args.max_seq_length, tokenizer, 
         rerank_pred_file1=rerank_pred_file1, 
         rerank_pred_file2=rerank_pred_file2, 
-        do_oracle=data_args.do_oracle
+        do_oracle=data_args.do_oracle,     
+        do_lower = data_args.do_lower
     )
     # eval_dataset.len = 300 # TODO: delete
 

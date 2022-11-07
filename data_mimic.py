@@ -154,7 +154,7 @@ def load_full_codes(train_path, version='mimic3'):
 
 class MimicFullDataset(Dataset):
     def __init__(self, version, mode, truncate_length, tokenizer, 
-                rerank_pred_file1=None, rerank_pred_file2=None, do_oracle=False, isdebug=False, group_size=50,
+                rerank_pred_file1=None, rerank_pred_file2=None, do_oracle=False, do_lower=False, isdebug=False, group_size=50,
                  label_truncate_length=30, term_count=1):
         self.version = version
         self.mode = mode
@@ -331,15 +331,17 @@ class MimicFullDataset(Dataset):
             for index in range(self.len):
                 top50icd9s_list = str(top50icd9s[index]).split(';')
                 text = self.df[index]['TEXT']
-                text = re.sub(r'\[\*\*[^\]]*\*\*\]', '', text)  # remove any mimic special token like [**2120-2-28**] or [**Hospital1 3278**]
-                tmp = self.tokenizer.tokenize(re.sub(r'  +', ' ', text.lower().replace("\n"," ")))
+                text = re.sub(r'\[\*\*[^\]]*\*\*\]', '', text)# remove any mimic special token like [**2120-2-28**] or [**Hospital1 3278**]
+                if do_lower:
+                    text = text.lower()  
+                tmp = self.tokenizer.tokenize(re.sub(r'  +', ' ', text.replace("\n"," ")))
                 if len(tmp) <= self.truncate_length-150:
                     num_pro_token.append(len(tmp))
                 else:
                     headers_pos = get_headersandindex(text)
                     if len(headers_pos) > 1:
                         new_text = get_subnote(text, headers_pos)
-                        tmp = self.tokenizer.tokenize(re.sub(r'  +', ' ', new_text.lower().replace("\n"," ")))
+                        tmp = self.tokenizer.tokenize(re.sub(r'  +', ' ', new_text.replace("\n"," ")))
                         countb += 1
                         text = new_text
                     num_pro_token.append(len(tmp))
@@ -350,7 +352,7 @@ class MimicFullDataset(Dataset):
                         descriptions, labels, global_window, icd9s = get_codes_description_oracle(top50icd9s_list[can_index:can_index+group_size], self.df[index]['LABELS'], desc_dict, list(self.c2ind.keys()))
                     else:
                         descriptions, labels, global_window, icd9s = get_codes_description_top50(top50icd9s_list[can_index:can_index+group_size], self.df[index]['LABELS'], desc_dict) 
-                    toadd['TEXT'] = descriptions + re.sub(r'  +', ' ', text.lower().replace("\n"," "))
+                    toadd['TEXT'] = descriptions + re.sub(r'  +', ' ', text.replace("\n"," "))
                     toadd['LABELS'] = labels
                     toadd['WINDOW'] = global_window
                     toadd['ICD9s'] = icd9s
