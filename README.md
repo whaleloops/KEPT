@@ -113,12 +113,20 @@ CUDA_VISIBLE_DEVICES=2,3 python -m torch.distributed.launch --nproc_per_node 2 -
 ## Citation
 
 ```
-@article{Yang2022KnowledgeIP,
-  title={Knowledge Injected Prompt Based Fine-tuning for Multi-label Few-shot ICD Coding},
-  author={Zhichao Yang and Shufan Wang and Bhanu Pratap Singh Rawat and Avijit Mitra and Hong Yu},
-  journal={ArXiv},
-  year={2022},
-  volume={abs/2210.03304}
+@inproceedings{yang-etal-2022-knowledge-injected,
+    title = "Knowledge Injected Prompt Based Fine-tuning for Multi-label Few-shot {ICD} Coding",
+    author = "Yang, Zhichao  and
+      Wang, Shufan  and
+      Rawat, Bhanu Pratap Singh  and
+      Mitra, Avijit  and
+      Yu, Hong",
+    booktitle = "Findings of the Association for Computational Linguistics: EMNLP 2022",
+    month = dec,
+    year = "2022",
+    address = "Abu Dhabi, United Arab Emirates",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2022.findings-emnlp.127",
+    pages = "1767--1781",
 }
 ```
 
